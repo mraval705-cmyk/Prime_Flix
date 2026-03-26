@@ -8,7 +8,6 @@ if (isset($_POST['plan_name'])) {
 }
 ?>
 
-
 <!DOCTYPE html>
 <html lang="en">
 
