@@ -2,7 +2,7 @@
 $host = "localhost";
 $user = "root";
 $pass = "";
-$dbname = "primefix_db";
+$dbname = "watchwise_db";
 
 $conn = mysqli_connect($host, $user, $pass, $dbname);
 
