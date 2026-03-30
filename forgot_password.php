@@ -48,7 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $hashed = password_hash($new_password, PASSWORD_DEFAULT);
             $hashed_safe = mysqli_real_escape_string($conn, $hashed);
 
-            mysqli_query($conn, "UPDATE users SET password='$hashed_safe' WHERE email='$email_safe'");
+            mysqli_query($conn, "INSERT INTO password_resets (email) VALUES ('$email')");
             $successMsg = "Password updated successfully.";
         } else {
             $emailErr = "Email not found.";
