@@ -223,11 +223,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="center-box">
         <p class="step">Step 1 of 3</p>
 
-        <h1>Create a password to start your membership</h1>
+        <h1>Create a password</h1>
 
         <p class="desc">
             Just a few more steps and you’re done!<br>
-            We hate paperwork, too.
         </p>
 
         <form method="POST" onsubmit="return validateForm()">

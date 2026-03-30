@@ -1,27 +1,23 @@
 <?php
 session_start();
-include "db.php"; // Database connect karo
+include "db.php";
 
-// Movies fetch karo database se
-$query = "SELECT * FROM movies WHERE category = 'trending'";
+$query = "SELECT * FROM movies WHERE category = 'trending' AND is_active = 1";
 $result = mysqli_query($conn, $query);
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>WATCHWISE </title>
+    <title>WATCHWISE</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
             --bg-color: #0b0f19;
-            /* Deep modern navy instead of plain black */
             --primary: #00e5ff;
-            /* Vibrant Cyan/Blue */
             --primary-hover: #00b4d8;
             --text-light: #f1f5f9;
             --text-muted: #94a3b8;
@@ -41,7 +37,6 @@ $result = mysqli_query($conn, $query);
             overflow-x: hidden;
         }
 
-        /* CUSTOM SCROLLBAR */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -60,7 +55,6 @@ $result = mysqli_query($conn, $query);
             background: var(--primary);
         }
 
-        /* HEADER - Glassmorphism */
         .header {
             position: fixed;
             top: 0;
@@ -119,14 +113,15 @@ $result = mysqli_query($conn, $query);
             box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
         }
 
-        /* HERO SECTION - Left Aligned, Modern */
         .hero {
             height: 100vh;
-            background: linear-gradient(90deg, #0b0f19 20%, rgba(11, 15, 25, 0.3) 100%),
-                url("https://image.tmdb.org/t/p/original/rMZonJhnHk0uPqQW524qA7tYmIQ.jpg") center/cover no-repeat;
+            background:
+                linear-gradient(90deg, rgba(11, 15, 25, 0.95) 25%, rgba(11, 15, 25, 0.5) 100%),
+                url("https://images.unsplash.com/photo-1524985069026-dd778a71c7b4") center/cover no-repeat;
             display: flex;
             align-items: center;
             padding: 0 5%;
+            position: relative;
         }
 
         .hero-content {
@@ -148,26 +143,24 @@ $result = mysqli_query($conn, $query);
             margin-bottom: 30px;
         }
 
-        /* EMAIL BOX - Rounded */
         .email-box {
             display: flex;
             gap: 10px;
             max-width: 500px;
+            backdrop-filter: blur(15px);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 40px;
         }
 
         .email-box input {
             flex: 1;
             padding: 15px 25px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 30px;
+            background: transparent;
+            border: none;
             color: #fff;
             font-size: 16px;
             outline: none;
-        }
-
-        .email-box input:focus {
-            border-color: var(--primary);
         }
 
         .email-box button {
@@ -193,7 +186,6 @@ $result = mysqli_query($conn, $query);
             margin-left: 15px;
         }
 
-        /* SECTIONS */
         .section {
             padding: 80px 5%;
         }
@@ -204,7 +196,6 @@ $result = mysqli_query($conn, $query);
             font-weight: 600;
         }
 
-        /* TRENDING */
         .trending-wrapper {
             position: relative;
             display: flex;
@@ -227,6 +218,7 @@ $result = mysqli_query($conn, $query);
             cursor: pointer;
             transition: all 0.4s ease;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            flex-shrink: 0;
         }
 
         .trending img:hover {
@@ -265,7 +257,6 @@ $result = mysqli_query($conn, $query);
             right: -20px;
         }
 
-        /* REASONS CARDS - Modern Bento Grid */
         .cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -299,19 +290,9 @@ $result = mysqli_query($conn, $query);
             line-height: 1.6;
         }
 
-        .icon-img {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 60px;
-            opacity: 0.7;
-        }
-
-        /* FAQ - Modern Accordion */
         .faq-item {
             background: transparent;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 0;
             padding: 25px 0;
             cursor: pointer;
         }
@@ -341,7 +322,44 @@ $result = mysqli_query($conn, $query);
             line-height: 1.6;
         }
 
-        /* MODAL */
+        .footer {
+            padding: 60px 5%;
+            background: #070b13;
+            color: var(--text-muted);
+        }
+
+        .footer-top {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 30px;
+        }
+
+        .footer h2,
+        .footer h4 {
+            color: #fff;
+            margin-bottom: 18px;
+        }
+
+        .footer a {
+            display: block;
+            color: var(--text-muted);
+            text-decoration: none;
+            margin-bottom: 10px;
+            transition: 0.3s;
+        }
+
+        .footer a:hover {
+            color: var(--primary);
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            margin-top: 30px;
+            padding-top: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -351,6 +369,7 @@ $result = mysqli_query($conn, $query);
             justify-content: center;
             align-items: center;
             backdrop-filter: blur(5px);
+            padding: 20px;
         }
 
         .modal-content {
@@ -383,94 +402,73 @@ $result = mysqli_query($conn, $query);
 
         .modal-right h1 {
             font-size: 28px;
-            margin-bottom: 10px;
-        }
-
-        .tags span {
-            display: inline-block;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            margin-right: 10px;
             margin-bottom: 15px;
         }
 
-        .modal-right p {
-            font-size: 15px;
+        .modal-right .tags {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .modal-right .tags span {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
             color: var(--text-muted);
-            margin-bottom: 25px;
-            line-height: 1.6;
+        }
+
+        .modal-right p {
+            color: var(--text-muted);
+            line-height: 1.7;
+            font-size: 15px;
         }
 
         .btn-modal {
             display: inline-block;
+            padding: 12px 24px;
             background: var(--primary);
             color: #000;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 30px;
             font-weight: 600;
-            width: fit-content;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-modal:hover {
+            background: var(--primary-hover);
+        }
+
+        button.btn-modal {
+            border: none;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        #trailerBtn {
+            background: #111827;
+            color: #fff;
+            border: 1px solid #38bdf8;
+        }
+
+        #trailerBtn:hover {
+            background: #0f172a;
         }
 
         .close {
             position: absolute;
             top: 15px;
-            right: 25px;
-            font-size: 35px;
+            right: 18px;
+            font-size: 30px;
             color: #fff;
             cursor: pointer;
+            z-index: 1001;
         }
 
-        /* FOOTER */
-        .footer {
-            background: #05070d;
-            padding: 80px 5%;
-            font-size: 14px;
-            color: #94a3b8;
-        }
-
-        .footer h4 {
-            color: #fff;
-            margin-bottom: 15px;
-            font-size: 16px;
-        }
-
-        .footer a {
-            display: block;
-            color: #94a3b8;
-            margin-bottom: 8px;
-            text-decoration: none;
-            transition: 0.3s;
-        }
-
-        .footer a:hover {
-            color: #00e5ff;
-        }
-
-        .email-box {
-            display: flex;
-            gap: 10px;
-            max-width: 500px;
-            backdrop-filter: blur(15px);
-            background: rgba(255, 255, 255, 0.05);
-            padding: 10px;
-            border-radius: 40px;
-        }
-
-        .hero {
-            height: 100vh;
-            background:
-                linear-gradient(90deg, rgba(11, 15, 25, 0.95) 25%, rgba(11, 15, 25, 0.5) 100%),
-                url("https://images.unsplash.com/photo-1524985069026-dd778a71c7b4") center/cover no-repeat;
-            display: flex;
-            align-items: center;
-            padding: 0 5%;
-            position: relative;
-        }
-
-        /* RESPONSIVE */
         @media (max-width: 768px) {
             .hero {
                 text-align: center;
@@ -512,7 +510,9 @@ $result = mysqli_query($conn, $query);
                 display: none;
             }
 
-            /* Hide arrows on mobile, allow touch scroll */
+            .footer-top {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -544,22 +544,29 @@ $result = mysqli_query($conn, $query);
     </section>
 
     <section class="section">
-        <h2 data-key="trending">Trending Now</h2>
-        <div class="trending" id="trending">
-            <?php
-            if (mysqli_num_rows($result) > 0) {
-                while ($row = mysqli_fetch_assoc($result)) {
-                    echo '<img src="' . $row['image_url'] . '" 
-                       data-title="' . $row['title'] . '" 
-                       data-desc="' . $row['description'] . '" 
-                       data-year="' . $row['release_year'] . '"
-                       data-rating="' . $row['rating'] . '"
-                       onclick="openModal(this)">';
+        <h2>Trending Now</h2>
+        <div class="trending-wrapper">
+            <button class="arrow-btn left" onclick="scrollTrending(-300)">&#10094;</button>
+
+            <div class="trending" id="trendingSection">
+                <?php
+                if ($result && mysqli_num_rows($result) > 0) {
+                    while ($row = mysqli_fetch_assoc($result)) {
+                        echo '<img src="' . htmlspecialchars($row['image_url']) . '" 
+                               data-title="' . htmlspecialchars($row['title']) . '" 
+                               data-desc="' . htmlspecialchars($row['description']) . '" 
+                               data-year="' . htmlspecialchars($row['release_year']) . '" 
+                               data-rating="' . htmlspecialchars($row['rating']) . '" 
+                               data-trailer="' . htmlspecialchars($row['trailer_url'] ?? '') . '" 
+                               onclick="openModal(this)">';
+                    }
+                } else {
+                    echo "<p>No movies found.</p>";
                 }
-            } else {
-                echo "<p>No movies found.</p>";
-            }
-            ?>
+                ?>
+            </div>
+
+            <button class="arrow-btn right" onclick="scrollTrending(300)">&#10095;</button>
         </div>
     </section>
 
@@ -568,23 +575,19 @@ $result = mysqli_query($conn, $query);
         <div class="cards">
             <div class="card">
                 <h3>Seamless TV Experience</h3>
-                <p>Watch on smart TVs, PlayStation, Xbox, Apple TV, and more without interruptions.</p>
-                <span style="font-size: 40px; position:absolute; bottom:15px; right:20px;">📺</span>
+                <p>Watch on smart TVs, PlayStation, Xbox, Apple TV, Chromecast and more.</p>
             </div>
             <div class="card">
                 <h3>Download & Go</h3>
-                <p>Save your favourites easily and always have something to watch offline.</p>
-                <span style="font-size: 40px; position:absolute; bottom:15px; right:20px;">📥</span>
+                <p>Save your favourite movies and shows to watch later anytime, even offline.</p>
             </div>
             <div class="card">
                 <h3>Watch Everywhere</h3>
-                <p>Stream unlimited movies and TV shows on your phone, tablet, laptop, and TV.</p>
-                <span style="font-size: 40px; position:absolute; bottom:15px; right:20px;">💻</span>
+                <p>Enjoy on phone, tablet, laptop and TV with one premium account.</p>
             </div>
             <div class="card">
-                <h3>Kids Profiles</h3>
-                <p>Send kids on adventures with their favourite characters in a safe space.</p>
-                <span style="font-size: 40px; position:absolute; bottom:15px; right:20px;">🧸</span>
+                <h3>Kids Safe Profiles</h3>
+                <p>Create a safe and fun space for kids with family-friendly entertainment.</p>
             </div>
         </div>
     </section>
@@ -593,23 +596,37 @@ $result = mysqli_query($conn, $query);
         <h2>Got Questions?</h2>
 
         <div class="faq-item" onclick="toggleFaq(this)">
-            <div class="faq-title">What is Watchwise? <span class="faq-icon">+</span></div>
-            <div class="faq-answer">Watchwise is a premium streaming service offering movies, TV shows, and exclusive
-                originals across multiple devices.</div>
+            <div class="faq-title">
+                What is Watchwise?
+                <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                Watchwise is a premium streaming platform where users can discover and enjoy movies, shows and trailers.
+            </div>
         </div>
+
         <div class="faq-item" onclick="toggleFaq(this)">
-            <div class="faq-title">How much does it cost? <span class="faq-icon">+</span></div>
-            <div class="faq-answer">Plans range from ₹149 to ₹649 per month. No hidden costs or contracts.</div>
+            <div class="faq-title">
+                How much does Watchwise cost?
+                <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                Plans start at ₹149 and go up depending on quality and screens.
+            </div>
         </div>
+
         <div class="faq-item" onclick="toggleFaq(this)">
-            <div class="faq-title">Where can I watch? <span class="faq-icon">+</span></div>
-            <div class="faq-answer">Watch anywhere, anytime on any internet-connected device. You can also download
-                content for offline viewing.</div>
+            <div class="faq-title">
+                Can I watch trailers before subscribing?
+                <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                Yes. In the trending section you can open a movie card and watch its trailer inside the website.
+            </div>
         </div>
 
         <div style="margin-top: 50px; text-align: center;">
-            <p style="margin-bottom: 20px; color: var(--text-muted);">Ready to start watching? Enter your email to
-                create an account.</p>
+            <p style="margin-bottom: 20px; color: var(--text-muted);">Ready to start watching? Enter your email to create an account.</p>
             <div class="email-box" style="margin: auto;">
                 <input type="email" id="emailBottom" placeholder="Enter your email address">
                 <button onclick="validateEmail('emailBottom')">Get Started</button>
@@ -617,19 +634,15 @@ $result = mysqli_query($conn, $query);
             <div class="error" id="errorBottom"></div>
         </div>
     </section>
+
     <footer class="footer">
-        <div class="footer-top" style="display:flex; flex-wrap:wrap; gap:40px; justify-content:space-between;">
-            <!-- Logo & description -->
-            <div style="flex:1; min-width:250px;">
-                <h2 style="color:var(--primary); font-weight:600;">WATCHWISE</h2>
-                <p style="margin-top:10px; color:var(--text-muted); max-width:400px;">
-                    Watchwise is India’s premium streaming platform offering unlimited movies,
-                    TV shows, originals, and exclusive content. Stream anytime, anywhere.
-                </p>
+        <div class="footer-top">
+            <div>
+                <h2>WATCHWISE</h2>
+                <p>Watchwise is your modern movie discovery platform with premium plans, trailers and trending entertainment in one place.</p>
             </div>
 
-            <!-- Company links -->
-            <div style="flex:1; min-width:150px;">
+            <div>
                 <h4>Company</h4>
                 <a href="#">About Us</a>
                 <a href="#">Careers</a>
@@ -637,8 +650,7 @@ $result = mysqli_query($conn, $query);
                 <a href="#">Investors</a>
             </div>
 
-            <!-- Support links -->
-            <div style="flex:1; min-width:150px;">
+            <div>
                 <h4>Support</h4>
                 <a href="#">Help Centre</a>
                 <a href="#">FAQ</a>
@@ -646,28 +658,17 @@ $result = mysqli_query($conn, $query);
                 <a href="#">Contact Us</a>
             </div>
 
-            <!-- Legal links -->
-            <div style="flex:1; min-width:150px;">
+            <div>
                 <h4>Legal</h4>
                 <a href="#">Terms of Use</a>
                 <a href="#">Privacy Policy</a>
                 <a href="#">Cookie Policy</a>
                 <a href="#">Corporate Information</a>
             </div>
-
-            <!-- Contact info -->
-            <div style="flex:1; min-width:200px;">
-                <h4>Connect With Us</h4>
-                <p>📧 support@watchwise.com</p>
-                <p>📞 000-800-919-1743</p>
-                <p>📍 Rajkot, Gujarat, India</p>
-            </div>
         </div>
 
-        <!-- Bottom copyright -->
-        <div style="margin-top:40px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px; text-align:center;">
+        <div class="footer-bottom">
             <p>© 2026 Watchwise India. All Rights Reserved.</p>
-            <p style="margin-top:5px; font-size:12px; color:var(--text-muted);">Protected by Google reCAPTCHA.</p>
         </div>
     </footer>
 
@@ -675,23 +676,42 @@ $result = mysqli_query($conn, $query);
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <div class="modal-left">
-                <img id="modalImg" src="">
+                <img id="modalImg" src="" alt="Movie Poster">
             </div>
             <div class="modal-right">
                 <h1 id="modalTitle">Title</h1>
                 <div class="tags">
-                    <span>2026</span>
+                    <span id="modalYear">2026</span>
                     <span>U/A 16+</span>
-                    <span>Premium</span>
+                    <span id="modalRating">Premium</span>
                 </div>
                 <p id="modalDesc">Description goes here.</p>
-                <a href="step1.php" class="btn-modal">Watch Now</a>
+
+                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:20px;">
+                    <a href="step1.php" class="btn-modal">Watch Movie</a>
+                    <button type="button" class="btn-modal" id="trailerBtn" onclick="openTrailerModal()">Watch Trailer</button>
+                </div>
             </div>
         </div>
     </div>
 
+    <div id="trailerModal" class="modal">
+        <div class="modal-content" style="max-width: 900px; width: 95%; padding: 0; background: #000; overflow: hidden;">
+            <span class="close" onclick="closeTrailerModal()" style="position:absolute; top:10px; right:16px; z-index:10;">&times;</span>
+            <iframe id="trailerFrame" width="100%" height="500" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+    </div>
+
     <script>
-        // 1. FAQ Toggle
+        let currentTrailer = "";
+
+        function scrollTrending(amount) {
+            document.getElementById("trendingSection").scrollBy({
+                left: amount,
+                behavior: "smooth"
+            });
+        }
+
         function toggleFaq(el) {
             el.classList.toggle("active");
             let ans = el.querySelector(".faq-answer");
@@ -706,7 +726,6 @@ $result = mysqli_query($conn, $query);
             }
         }
 
-        // 2. Email Validation (Integrated with your backend logic)
         function validateEmail(id) {
             let email = document.getElementById(id).value;
             let error = document.getElementById(id === "emailTop" ? "errorTop" : "errorBottom");
@@ -721,87 +740,68 @@ $result = mysqli_query($conn, $query);
                 return;
             }
 
-            // AJAX request to save email
-            fetch("save_email.php", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/x-www-form-urlencoded"
-                    },
-                    body: "email=" + encodeURIComponent(email)
-                })
-                .then(res => res.text())
-                .then(data => {
-                    if (data === "success") {
-                        window.location.href = "step1.php";
-                    } else if (data === "exists") {
-                        error.innerHTML = "Email already registered!";
-                    } else {
-                        // For testing UI without backend, just redirect:
-                        window.location.href = "step1.php";
-                        // error.innerHTML = "Something went wrong!";
-                    }
-                }).catch(err => {
-                    // Fallback for local testing without DB
-                    window.location.href = "step1.php";
-                });
+            error.innerHTML = "";
+            window.location.href = "step1.php?email=" + encodeURIComponent(email);
         }
 
-        // 3. Trending Scroll
-        function scrollTrending(direction) {
-            const row = document.getElementById("trending");
-            row.scrollBy({
-                left: 250 * direction,
-                behavior: "smooth"
-            });
-        }
+        function openModal(el) {
+            document.getElementById("modalImg").src = el.getAttribute("src");
+            document.getElementById("modalTitle").innerText = el.getAttribute("data-title");
+            document.getElementById("modalDesc").innerText = el.getAttribute("data-desc");
+            document.getElementById("modalYear").innerText = el.getAttribute("data-year") || "2026";
+            document.getElementById("modalRating").innerText = el.getAttribute("data-rating") || "Premium";
 
-        // 4. Modal Logic
-        function openModal(img) {
+            currentTrailer = el.getAttribute("data-trailer") || "";
+
+            const trailerBtn = document.getElementById("trailerBtn");
+            if (!currentTrailer) {
+                trailerBtn.disabled = true;
+                trailerBtn.style.opacity = "0.6";
+                trailerBtn.innerText = "Trailer Not Available";
+            } else {
+                trailerBtn.disabled = false;
+                trailerBtn.style.opacity = "1";
+                trailerBtn.innerText = "Watch Trailer";
+            }
+
             document.getElementById("movieModal").style.display = "flex";
-            document.getElementById("modalImg").src = img.src.replace("w300", "w500");
-            document.getElementById("modalTitle").innerText = img.dataset.title;
-            document.getElementById("modalDesc").innerText = img.dataset.desc;
-
-            // Extra: Year aur Rating bhi update kar sakte ho
-            const tags = document.querySelectorAll(".tags span");
-            tags[0].innerText = img.dataset.year;
-            tags[1].innerText = img.dataset.rating;
         }
 
         function closeModal() {
             document.getElementById("movieModal").style.display = "none";
         }
 
-        // Close modal when clicking outside of it
-        window.onclick = function(event) {
-            let modal = document.getElementById("movieModal");
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
+        function openTrailerModal() {
+            if (!currentTrailer) return;
+
+            let finalUrl = currentTrailer.includes("?") ?
+                currentTrailer + "&autoplay=1" :
+                currentTrailer + "?autoplay=1";
+
+            document.getElementById("trailerFrame").src = finalUrl;
+            document.getElementById("trailerModal").style.display = "flex";
         }
 
-        // 5. Language Translation
-        const translations = {
-            en: {
-                title: "Dive into endless entertainment.",
-                subtitle: "Premium movies & shows. Starts at ₹149.",
-                signin: "Sign In",
-                trending: "Trending Now"
-            },
-            hi: {
-                title: "अंतहीन मनोरंजन में गोता लगाएँ।",
-                subtitle: "प्रीमियम फिल्में और शो। मात्र ₹149 से शुरू।",
-                signin: "साइन इन",
-                trending: "ट्रेंडिंग नाउ"
-            }
-        };
+        function closeTrailerModal() {
+            document.getElementById("trailerFrame").src = "";
+            document.getElementById("trailerModal").style.display = "none";
+        }
 
         function changeLanguage(lang) {
-            document.querySelectorAll("[data-key]").forEach(el => {
-                const key = el.getAttribute("data-key");
-                el.textContent = translations[lang][key];
-            });
+            // placeholder
         }
+
+        window.onclick = function(event) {
+            const movieModal = document.getElementById("movieModal");
+            const trailerModal = document.getElementById("trailerModal");
+
+            if (event.target === movieModal) {
+                closeModal();
+            }
+            if (event.target === trailerModal) {
+                closeTrailerModal();
+            }
+        };
     </script>
 </body>
 
