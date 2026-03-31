@@ -5,6 +5,7 @@ $emailErr = "";
 $newPassErr = "";
 $confirmErr = "";
 $successMsg = "";
+$generalErr = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST['email']);
@@ -42,14 +43,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($valid) {
         $email_safe = mysqli_real_escape_string($conn, $email);
+
         $check = mysqli_query($conn, "SELECT * FROM users WHERE email='$email_safe'");
 
-        if (mysqli_num_rows($check) > 0) {
+        if ($check && mysqli_num_rows($check) > 0) {
             $hashed = password_hash($new_password, PASSWORD_DEFAULT);
             $hashed_safe = mysqli_real_escape_string($conn, $hashed);
 
-            mysqli_query($conn, "INSERT INTO password_resets (email) VALUES ('$email')");
-            $successMsg = "Password updated successfully.";
+            // Generate OTP for password_resets table
+            $otp = rand(100000, 999999);
+
+            // Update password in users table
+            $update = mysqli_query($conn, "UPDATE users SET password='$hashed_safe' WHERE email='$email_safe'");
+
+            if ($update) {
+                // Insert reset record
+                $insertReset = mysqli_query($conn, "INSERT INTO password_resets (email, otp) VALUES ('$email_safe', '$otp')");
+
+                if ($insertReset) {
+                    $successMsg = "Password updated successfully.";
+                    $email = "";
+                } else {
+                    $generalErr = "Password updated, but reset history could not be saved.";
+                }
+            } else {
+                $generalErr = "Failed to update password.";
+            }
         } else {
             $emailErr = "Email not found.";
         }
@@ -78,6 +97,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background: #1e293b;
             padding: 30px;
             border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
         }
 
         .form-group {
@@ -90,6 +110,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border: none;
             border-radius: 8px;
             box-sizing: border-box;
+            outline: none;
         }
 
         button {
@@ -101,10 +122,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border-radius: 8px;
             cursor: pointer;
             margin-top: 6px;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #0284c7;
         }
 
         .error {
-            color: red;
+            color: #ff6b6b;
             font-size: 13px;
             margin-top: 5px;
             padding-left: 2px;
@@ -116,9 +142,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             margin-bottom: 12px;
         }
 
+        .general-error {
+            color: #ff6b6b;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
         a {
             color: #38bdf8;
             text-decoration: none;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -129,6 +166,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         <?php if ($successMsg != "") { ?>
             <div class="success"><?php echo $successMsg; ?></div>
+        <?php } ?>
+
+        <?php if ($generalErr != "") { ?>
+            <div class="general-error"><?php echo $generalErr; ?></div>
         <?php } ?>
 
         <form method="POST">
