@@ -1,10 +1,47 @@
 <?php
 session_start();
+include "db.php";
+
+$emailValue = "";
+$emailServerError = "";
+$passwordServerError = "";
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $_SESSION['reg_email'] = $_POST['email'];
-    $_SESSION['reg_password'] = password_hash($_POST['password'], PASSWORD_DEFAULT);
-    header("Location: step3.php");
-    exit();
+    $emailValue = trim($_POST['email'] ?? '');
+    $password = trim($_POST['password'] ?? '');
+
+    $isValid = true;
+
+    if ($emailValue == "") {
+        $emailServerError = "Email is required.";
+        $isValid = false;
+    } elseif (!filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
+        $emailServerError = "Please enter a valid email address.";
+        $isValid = false;
+    } else {
+        $safeEmail = mysqli_real_escape_string($conn, $emailValue);
+        $checkEmail = mysqli_query($conn, "SELECT id FROM users WHERE email='$safeEmail' LIMIT 1");
+
+        if ($checkEmail && mysqli_num_rows($checkEmail) > 0) {
+            $emailServerError = "This email is already registered.";
+            $isValid = false;
+        }
+    }
+
+    if ($password == "") {
+        $passwordServerError = "Password is required.";
+        $isValid = false;
+    } elseif (strlen($password) < 8) {
+        $passwordServerError = "Password must be at least 8 characters.";
+        $isValid = false;
+    }
+
+    if ($isValid) {
+        $_SESSION['reg_email'] = $emailValue;
+        $_SESSION['reg_password'] = password_hash($password, PASSWORD_DEFAULT);
+        header("Location: step3.php");
+        exit();
+    }
 }
 ?>
 
@@ -27,7 +64,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         body {
-            /* તમારો જૂનો બેકગ્રાઉન્ડ ઇમેજ પાથ */
             background: url("img/Screenshot 2026-01-01 184050.png") center/cover no-repeat fixed;
             min-height: 100vh;
             color: #fff;
@@ -36,7 +72,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             flex-direction: column;
         }
 
-        /* ડાર્ક નેવી બ્લુ ઓવરલે */
         body::before {
             content: "";
             position: fixed;
@@ -48,7 +83,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             z-index: -1;
         }
 
-        /* હેડર ડિઝાઇન */
         header {
             padding: 25px 40px;
             display: flex;
@@ -59,7 +93,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         .logo {
             color: #0ea5e9;
-            /* Watchwise Sky Blue */
             font-size: 32px;
             font-weight: 800;
             letter-spacing: 2px;
@@ -85,7 +118,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border-color: rgba(255, 255, 255, 0.3);
         }
 
-        /* સેન્ટર બોક્સ (Glassmorphism Effect) */
         .center-box {
             width: 100%;
             max-width: 450px;
@@ -152,14 +184,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         .error {
             color: #f43f5e;
-            /* Red for validation errors */
             font-size: 12px;
             margin-top: 8px;
             display: none;
             padding-left: 5px;
         }
 
-        /* પ્રીમિયમ ગ્રેડિયન્ટ બટન */
+        .success-msg {
+            color: #22c55e;
+            font-size: 12px;
+            margin-top: 8px;
+            display: none;
+            padding-left: 5px;
+        }
+
         .btn-primary {
             width: 100%;
             margin-top: 20px;
@@ -180,7 +218,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
         }
 
-        /* ફૂટર ડિઝાઇન */
         .footer {
             margin-top: auto;
             padding: 30px;
@@ -231,13 +268,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         <form method="POST" onsubmit="return validateForm()">
             <div class="form-group">
-                <input type="email" id="emailTop" name="email" placeholder="Email address">
-                <div class="error" id="emailError"></div>
+                <input type="email" id="emailTop" name="email" placeholder="Email address"
+                    value="<?php echo htmlspecialchars($emailValue); ?>" onblur="checkEmailAjax()">
+                <div class="error" id="emailError">
+                    <?php echo htmlspecialchars($emailServerError); ?>
+                </div>
+                <div class="success-msg" id="emailSuccess"></div>
             </div>
 
             <div class="form-group">
                 <input type="password" id="password" name="password" placeholder="Add a password">
-                <div class="error" id="passwordError"></div>
+                <div class="error" id="passwordError">
+                    <?php echo htmlspecialchars($passwordServerError); ?>
+                </div>
             </div>
 
             <button type="submit" class="btn-primary">Next</button>
@@ -249,6 +292,97 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </footer>
 
     <script>
+        let ajaxEmailStatus = "";
+
+        window.onload = function () {
+            const emailServerError = `<?php echo addslashes($emailServerError); ?>`;
+            const passwordServerError = `<?php echo addslashes($passwordServerError); ?>`;
+
+            if (emailServerError !== "") {
+                document.getElementById("emailError").style.display = "block";
+                document.getElementById("emailTop").style.borderColor = "#f43f5e";
+            }
+
+            if (passwordServerError !== "") {
+                document.getElementById("passwordError").style.display = "block";
+                document.getElementById("password").style.borderColor = "#f43f5e";
+            }
+        };
+
+        function resetEmailMessages() {
+            const emailError = document.getElementById("emailError");
+            const emailSuccess = document.getElementById("emailSuccess");
+            const emailInput = document.getElementById("emailTop");
+
+            emailError.style.display = "none";
+            emailSuccess.style.display = "none";
+            emailInput.style.borderColor = "rgba(255, 255, 255, 0.15)";
+        }
+
+        function checkEmailAjax() {
+            const emailInput = document.getElementById("emailTop");
+            const email = emailInput.value.trim();
+            const emailError = document.getElementById("emailError");
+            const emailSuccess = document.getElementById("emailSuccess");
+
+            resetEmailMessages();
+            ajaxEmailStatus = "";
+
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (email === "") {
+                emailError.innerText = "Email is required.";
+                emailError.style.display = "block";
+                emailInput.style.borderColor = "#f43f5e";
+                ajaxEmailStatus = "invalid";
+                return;
+            }
+
+            if (!emailPattern.test(email)) {
+                emailError.innerText = "Please enter a valid email address.";
+                emailError.style.display = "block";
+                emailInput.style.borderColor = "#f43f5e";
+                ajaxEmailStatus = "invalid";
+                return;
+            }
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "check_email.php", true);
+            xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+
+                        if (response.status === "exists") {
+                            emailError.innerText = response.message;
+                            emailError.style.display = "block";
+                            emailInput.style.borderColor = "#f43f5e";
+                            ajaxEmailStatus = "exists";
+                        } else if (response.status === "success") {
+                            emailSuccess.innerText = response.message;
+                            emailSuccess.style.display = "block";
+                            emailInput.style.borderColor = "#22c55e";
+                            ajaxEmailStatus = "ok";
+                        } else {
+                            emailError.innerText = response.message;
+                            emailError.style.display = "block";
+                            emailInput.style.borderColor = "#f43f5e";
+                            ajaxEmailStatus = "invalid";
+                        }
+                    } catch (e) {
+                        emailError.innerText = "Something went wrong while checking email.";
+                        emailError.style.display = "block";
+                        emailInput.style.borderColor = "#f43f5e";
+                        ajaxEmailStatus = "invalid";
+                    }
+                }
+            };
+
+            xhr.send("email=" + encodeURIComponent(email));
+        }
+
         function validateForm() {
             let isValid = true;
 
@@ -259,16 +393,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             const emailError = document.getElementById("emailError");
             const passwordError = document.getElementById("passwordError");
+            const emailSuccess = document.getElementById("emailSuccess");
 
-            // Reset errors
             emailError.style.display = "none";
             passwordError.style.display = "none";
+            emailSuccess.style.display = "none";
             emailInput.style.borderColor = "rgba(255, 255, 255, 0.15)";
             passwordInput.style.borderColor = "rgba(255, 255, 255, 0.15)";
 
             const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-            // Email Validation
             if (email === "") {
                 emailError.innerText = "Email is required.";
                 emailError.style.display = "block";
@@ -279,9 +413,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 emailError.style.display = "block";
                 emailInput.style.borderColor = "#f43f5e";
                 isValid = false;
+            } else if (ajaxEmailStatus === "exists") {
+                emailError.innerText = "This email is already registered.";
+                emailError.style.display = "block";
+                emailInput.style.borderColor = "#f43f5e";
+                isValid = false;
             }
 
-            // Password Validation
             if (password === "") {
                 passwordError.innerText = "Password is required.";
                 passwordError.style.display = "block";

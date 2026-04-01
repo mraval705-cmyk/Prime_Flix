@@ -1,7 +1,6 @@
 <?php
 session_start();
 include "db.php";
-
 $showSuccess = false;
 
 if (!isset($_SESSION['reg_email']) || !isset($_SESSION['reg_password'])) {
@@ -11,25 +10,52 @@ if (!isset($_SESSION['reg_email']) || !isset($_SESSION['reg_password'])) {
 
 if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
 
-    if (isset($_SESSION['reg_email']) && isset($_SESSION['reg_password'])) {
+    $email = $_SESSION['reg_email'] ?? '';
+    $pass = $_SESSION['reg_password'] ?? '';
+    $plan = $_SESSION['reg_plan'] ?? 'Standard';
+    $payment_method = $_GET['method'] ?? 'Unknown';
+    $upi_app = $_GET['upi_app'] ?? '';
+    $upi_id = $_GET['upi_id'] ?? '';
 
-        $email = $_SESSION['reg_email'];
-        $pass = $_SESSION['reg_password'];
-        $plan = isset($_SESSION['reg_plan']) ? $_SESSION['reg_plan'] : 'Standard';
+    $amount = 0;
+    if ($plan == 'Mobile') {
+        $amount = 149;
+    } elseif ($plan == 'Basic') {
+        $amount = 199;
+    } elseif ($plan == 'Standard') {
+        $amount = 499;
+    } elseif ($plan == 'Premium') {
+        $amount = 649;
+    }
 
-        $email_safe = mysqli_real_escape_string($conn, $email);
-        $pass_safe = mysqli_real_escape_string($conn, $pass);
-        $plan_safe = mysqli_real_escape_string($conn, $plan);
+    $email_safe = mysqli_real_escape_string($conn, $email);
+    $pass_safe = mysqli_real_escape_string($conn, $pass);
+    $plan_safe = mysqli_real_escape_string($conn, $plan);
+    $method_safe = mysqli_real_escape_string($conn, $payment_method);
+    $upi_app_safe = mysqli_real_escape_string($conn, $upi_app);
+    $upi_id_safe = mysqli_real_escape_string($conn, $upi_id);
 
-        $check = mysqli_query($conn, "SELECT id FROM users WHERE email = '$email_safe'");
+    if ($email_safe != "" && $pass_safe != "") {
 
-        if (mysqli_num_rows($check) == 0) {
-            $sql = "INSERT INTO users (email, password, plan, payment_status) VALUES ('$email_safe', '$pass_safe', '$plan_safe', 'Success')";
-            if (mysqli_query($conn, $sql)) {
-                $showSuccess = true;
-            }
+        $check = mysqli_query($conn, "SELECT id FROM users WHERE email = '$email_safe' LIMIT 1");
+
+        if ($check && mysqli_num_rows($check) == 0) {
+            $sql = "INSERT INTO users (email, password, plan, payment_status) 
+                    VALUES ('$email_safe', '$pass_safe', '$plan_safe', 'Success')";
+            mysqli_query($conn, $sql);
         } else {
-            $showSuccess = true;
+            mysqli_query($conn, "UPDATE users SET plan='$plan_safe', payment_status='Success' WHERE email='$email_safe'");
+        }
+
+        $payment_sql = "INSERT INTO payments (email, plan, amount, payment_method, upi_app, upi_id) 
+                        VALUES ('$email_safe', '$plan_safe', '$amount', '$method_safe', '$upi_app_safe', '$upi_id_safe')";
+
+        if (mysqli_query($conn, $payment_sql)) {
+            $_SESSION['payment_success'] = "yes";
+            header("Location: Signup.php");
+            exit();
+        } else {
+            die("Payment insert error: " . mysqli_error($conn));
         }
     }
 }
@@ -202,6 +228,7 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
 
 <body>
 
+
     <header>
         <div class="logo">Watchwise</div>
         <div onclick="logout()" class="signout">Sign Out</div>
@@ -318,7 +345,7 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
             }
 
             if (valid) {
-                successPage();
+                successPage('Card');
             }
         }
 
@@ -342,12 +369,22 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
             }
 
             if (valid) {
-                successPage();
+                successPage('UPI', upiApp, upi);
             }
         }
 
-        function successPage() {
-            window.location.href = "step4.php?payment_done=1";
+        function successPage(method, upiApp = '', upiId = '') {
+            let url = "step4.php?payment_done=1&method=" + encodeURIComponent(method);
+
+            if (upiApp !== '') {
+                url += "&upi_app=" + encodeURIComponent(upiApp);
+            }
+
+            if (upiId !== '') {
+                url += "&upi_id=" + encodeURIComponent(upiId);
+            }
+
+            window.location.href = url;
         }
 
         function formatCardInput() {
