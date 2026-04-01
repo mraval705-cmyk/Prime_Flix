@@ -1,7 +1,6 @@
 <?php
 session_start();
 include "db.php";
-
 $showSuccess = false;
 
 if (!isset($_SESSION['reg_email']) || !isset($_SESSION['reg_password'])) {
@@ -11,47 +10,53 @@ if (!isset($_SESSION['reg_email']) || !isset($_SESSION['reg_password'])) {
 
 if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
 
-    if (isset($_SESSION['reg_email']) && isset($_SESSION['reg_password'])) {
+    $email = $_SESSION['reg_email'] ?? '';
+    $pass = $_SESSION['reg_password'] ?? '';
+    $plan = $_SESSION['reg_plan'] ?? 'Standard';
+    $payment_method = $_GET['method'] ?? 'Unknown';
+    $upi_app = $_GET['upi_app'] ?? '';
+    $upi_id = $_GET['upi_id'] ?? '';
 
-        $email = $_SESSION['reg_email'];
-        $pass = $_SESSION['reg_password'];
-        $plan = isset($_SESSION['reg_plan']) ? $_SESSION['reg_plan'] : 'Standard';
-        $payment_method = isset($_GET['method']) ? $_GET['method'] : 'Unknown';
-        $upi_app = isset($_GET['upi_app']) ? $_GET['upi_app'] : '';
-        $upi_id = isset($_GET['upi_id']) ? $_GET['upi_id'] : '';
+    $amount = 0;
+    if ($plan == 'Mobile') {
+        $amount = 149;
+    } elseif ($plan == 'Basic') {
+        $amount = 199;
+    } elseif ($plan == 'Standard') {
+        $amount = 499;
+    } elseif ($plan == 'Premium') {
+        $amount = 649;
+    }
 
-        // Plan ke hisab se amount set karo
-        $amount = 0;
-        if ($plan == 'Mobile') {
-            $amount = 149;
-        } elseif ($plan == 'Basic') {
-            $amount = 199;
-        } elseif ($plan == 'Standard') {
-            $amount = 499;
-        } elseif ($plan == 'Premium') {
-            $amount = 649;
-        }
+    $email_safe = mysqli_real_escape_string($conn, $email);
+    $pass_safe = mysqli_real_escape_string($conn, $pass);
+    $plan_safe = mysqli_real_escape_string($conn, $plan);
+    $method_safe = mysqli_real_escape_string($conn, $payment_method);
+    $upi_app_safe = mysqli_real_escape_string($conn, $upi_app);
+    $upi_id_safe = mysqli_real_escape_string($conn, $upi_id);
 
-        $email_safe = mysqli_real_escape_string($conn, $email);
-        $pass_safe = mysqli_real_escape_string($conn, $pass);
-        $plan_safe = mysqli_real_escape_string($conn, $plan);
-        $method_safe = mysqli_real_escape_string($conn, $payment_method);
-        $upi_app_safe = mysqli_real_escape_string($conn, $upi_app);
-        $upi_id_safe = mysqli_real_escape_string($conn, $upi_id);
+    if ($email_safe != "" && $pass_safe != "") {
 
-        $check = mysqli_query($conn, "SELECT id FROM users WHERE email = '$email_safe'");
+        $check = mysqli_query($conn, "SELECT id FROM users WHERE email = '$email_safe' LIMIT 1");
 
-        if (mysqli_num_rows($check) == 0) {
+        if ($check && mysqli_num_rows($check) == 0) {
             $sql = "INSERT INTO users (email, password, plan, payment_status) 
                     VALUES ('$email_safe', '$pass_safe', '$plan_safe', 'Success')";
             mysqli_query($conn, $sql);
+        } else {
+            mysqli_query($conn, "UPDATE users SET plan='$plan_safe', payment_status='Success' WHERE email='$email_safe'");
         }
 
-        // payment record save karo
-        mysqli_query($conn, "INSERT INTO payments (email, plan, amount, payment_method, upi_app, upi_id) 
-                             VALUES ('$email_safe', '$plan_safe', '$amount', '$method_safe', '$upi_app_safe', '$upi_id_safe')");
+        $payment_sql = "INSERT INTO payments (email, plan, amount, payment_method, upi_app, upi_id) 
+                        VALUES ('$email_safe', '$plan_safe', '$amount', '$method_safe', '$upi_app_safe', '$upi_id_safe')";
 
-        $showSuccess = true;
+        if (mysqli_query($conn, $payment_sql)) {
+            $_SESSION['payment_success'] = "yes";
+            header("Location: Signup.php");
+            exit();
+        } else {
+            die("Payment insert error: " . mysqli_error($conn));
+        }
     }
 }
 ?>
@@ -222,6 +227,7 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
 </head>
 
 <body>
+
 
     <header>
         <div class="logo">Watchwise</div>

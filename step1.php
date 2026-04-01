@@ -1,3 +1,30 @@
+<?php
+session_start();
+include "db_config.php";
+include "mailer.php";
+
+if (isset($_POST['email'])) {
+    $email = mysqli_real_escape_string($conn, $_POST['email']);
+
+    $check = mysqli_query($conn, "SELECT * FROM users WHERE email='$email'");
+
+    if (mysqli_num_rows($check) > 0) {
+        $otp = rand(100000, 999999);
+
+        $_SESSION['reset_email'] = $email;
+        $_SESSION['reset_otp'] = $otp;
+
+        if (sendOTP($email, $otp)) {
+            header("Location: step2.php");
+            exit();
+        } else {
+            echo "Failed to send OTP email.";
+        }
+    } else {
+        echo "Email not found.";
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
