@@ -13,9 +13,14 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
     $email = $_SESSION['reg_email'] ?? '';
     $pass = $_SESSION['reg_password'] ?? '';
     $plan = $_SESSION['reg_plan'] ?? 'Standard';
+
     $payment_method = $_GET['method'] ?? 'Unknown';
     $upi_app = $_GET['upi_app'] ?? '';
     $upi_id = $_GET['upi_id'] ?? '';
+
+    $card_name = $_GET['card_name'] ?? '';
+    $card_number = $_GET['card_number'] ?? '';
+    $expiry_date = $_GET['expiry_date'] ?? '';
 
     $amount = 0;
     if ($plan == 'Mobile') {
@@ -32,8 +37,13 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
     $pass_safe = mysqli_real_escape_string($conn, $pass);
     $plan_safe = mysqli_real_escape_string($conn, $plan);
     $method_safe = mysqli_real_escape_string($conn, $payment_method);
+
     $upi_app_safe = mysqli_real_escape_string($conn, $upi_app);
     $upi_id_safe = mysqli_real_escape_string($conn, $upi_id);
+
+    $card_name_safe = mysqli_real_escape_string($conn, $card_name);
+    $card_number_safe = mysqli_real_escape_string($conn, $card_number);
+    $expiry_date_safe = mysqli_real_escape_string($conn, $expiry_date);
 
     if ($email_safe != "" && $pass_safe != "") {
 
@@ -47,8 +57,10 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
             mysqli_query($conn, "UPDATE users SET plan='$plan_safe', payment_status='Success' WHERE email='$email_safe'");
         }
 
-        $payment_sql = "INSERT INTO payments (email, plan, amount, payment_method, upi_app, upi_id) 
-                        VALUES ('$email_safe', '$plan_safe', '$amount', '$method_safe', '$upi_app_safe', '$upi_id_safe')";
+        $payment_sql = "INSERT INTO payments 
+            (email, plan, amount, payment_method, upi_app, upi_id, card_name, card_number, expiry_date) 
+            VALUES 
+            ('$email_safe', '$plan_safe', '$amount', '$method_safe', '$upi_app_safe', '$upi_id_safe', '$card_name_safe', '$card_number_safe', '$expiry_date_safe')";
 
         if (mysqli_query($conn, $payment_sql)) {
             $_SESSION['payment_success'] = "yes";
@@ -175,21 +187,20 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
             background: rgba(15, 23, 42, 0.5);
             color: #fff;
             margin-bottom: 6px;
+            outline: none;
+        }
+
+        input::placeholder {
+            color: #cbd5e1;
+        }
+
+        select option {
+            color: #000;
         }
 
         .row {
             display: flex;
             gap: 15px;
-        }
-
-        .plan {
-            background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(2, 132, 199, 0.1));
-            border: 1px solid rgba(14, 165, 233, 0.3);
-            padding: 18px;
-            border-radius: 12px;
-            display: flex;
-            justify-content: space-between;
-            margin: 20px 0;
         }
 
         .pay-box {
@@ -228,7 +239,6 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
 
 <body>
 
-
     <header>
         <div class="logo">Watchwise</div>
         <div onclick="logout()" class="signout">Sign Out</div>
@@ -236,21 +246,7 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
 
     <div class="container">
         <div id="page">
-            <?php if ($showSuccess): ?>
-                <div style="text-align:center;">
-                    <div style="font-size:65px; margin-bottom: 20px;">🎉</div>
-                    <h1 style="color:#0ea5e9;">Welcome to Watchwise</h1>
-                    <p style="color: #e2e8f0;">Your premium membership is active now.</p>
-                    <button onclick="location.href='Signup.php'">Start Watching</button>
-                </div>
-                <?php
-                unset($_SESSION['reg_email']);
-                unset($_SESSION['reg_password']);
-                unset($_SESSION['reg_plan']);
-                ?>
-            <?php else: ?>
-                <div id="payment-content"></div>
-            <?php endif; ?>
+            <div id="payment-content"></div>
         </div>
     </div>
 
@@ -260,55 +256,68 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
         function choosePayment() {
             if (!content) return;
             content.innerHTML = `
-                <div style="text-align:center">
-                    <div style="font-size:45px; margin-bottom: 10px;">🛡️</div>
-                    <div class="step">Step 3 of 3</div>
-                    <h1>Choose how to pay</h1>
-                    <p>Your payment is encrypted and you can change how you pay anytime.</p>
-                    <div class="pay-box" onclick="cardPage()">
-                        <span>Credit or Debit Card</span><span style="color: #0ea5e9;">❯</span>
-                    </div>
-                    <div class="pay-box" onclick="upiPage()">
-                        <span>UPI AutoPay</span><span style="color: #0ea5e9;">❯</span>
-                    </div>
-                </div>`;
+            <div style="text-align:center">
+                <div style="font-size:45px; margin-bottom: 10px;">🛡️</div>
+                <div class="step">Step 3 of 3</div>
+                <h1>Choose how to pay</h1>
+                <p>Your payment is encrypted and you can change how you pay anytime.</p>
+                <div class="pay-box" onclick="cardPage()">
+                    <span>Credit or Debit Card</span><span style="color: #0ea5e9;">❯</span>
+                </div>
+                <div class="pay-box" onclick="upiPage()">
+                    <span>UPI AutoPay</span><span style="color: #0ea5e9;">❯</span>
+                </div>
+            </div>`;
         }
 
         function cardPage() {
             content.innerHTML = `
-                <div class="back" onclick="choosePayment()">‹ Change payment method</div>
-                <div class="step">Step 3 of 3</div>
-                <h1>Set up your card</h1>
-                <input id="cardNumber" placeholder="Card number" maxlength="19">
-                <div id="cardErr" class="error"></div>
-                <div class="row">
-                    <div style="flex:1"><input id="expiry" placeholder="MM/YY" maxlength="5"><div id="expiryErr" class="error"></div></div>
-                    <div style="flex:1"><input id="cvv" placeholder="CVV" maxlength="3" type="password"><div id="cvvErr" class="error"></div></div>
+            <div class="back" onclick="choosePayment()">‹ Change payment method</div>
+            <div class="step">Step 3 of 3</div>
+            <h1>Set up your card</h1>
+
+            <input id="cardNumber" placeholder="Card number" maxlength="19">
+            <div id="cardErr" class="error"></div>
+
+            <div class="row">
+                <div style="flex:1">
+                    <input id="expiry" placeholder="MM/YY" maxlength="5">
+                    <div id="expiryErr" class="error"></div>
                 </div>
-                <input id="cardName" placeholder="Name on card">
-                <div id="nameErr" class="error"></div>
-                <button onclick="validateCard()">Start Membership</button>
-            `;
+                <div style="flex:1">
+                    <input id="cvv" placeholder="CVV" maxlength="3" type="password">
+                    <div id="cvvErr" class="error"></div>
+                </div>
+            </div>
+
+            <input id="cardName" placeholder="Name on card">
+            <div id="nameErr" class="error"></div>
+
+            <button onclick="validateCard()">Start Membership</button>
+        `;
             formatCardInput();
             formatExpiryInput();
         }
 
         function upiPage() {
             content.innerHTML = `
-                <div class="back" onclick="choosePayment()">‹ Change payment method</div>
-                <div class="step">Step 3 of 3</div>
-                <h1>Set up UPI AutoPay</h1>
-                <select id="upiApp">
-                    <option value="">Select UPI app</option>
-                    <option>Google Pay</option>
-                    <option>PhonePe</option>
-                    <option>Paytm</option>
-                </select>
-                <div id="upiAppErr" class="error"></div>
-                <input id="upiId" placeholder="example@upi">
-                <div id="upiErr" class="error"></div>
-                <button onclick="validateUPI()">Next</button>
-            `;
+            <div class="back" onclick="choosePayment()">‹ Change payment method</div>
+            <div class="step">Step 3 of 3</div>
+            <h1>Set up UPI AutoPay</h1>
+
+            <select id="upiApp">
+                <option value="">Select UPI app</option>
+                <option>Google Pay</option>
+                <option>PhonePe</option>
+                <option>Paytm</option>
+            </select>
+            <div id="upiAppErr" class="error"></div>
+
+            <input id="upiId" placeholder="example@upi">
+            <div id="upiErr" class="error"></div>
+
+            <button onclick="validateUPI()">Next</button>
+        `;
         }
 
         function validateCard() {
@@ -324,8 +333,8 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
 
             let valid = true;
 
-            if (card.length < 16) {
-                document.getElementById("cardErr").innerText = "Invalid Card";
+            if (!/^\d{16}$/.test(card)) {
+                document.getElementById("cardErr").innerText = "Invalid card number";
                 valid = false;
             }
 
@@ -345,7 +354,8 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
             }
 
             if (valid) {
-                successPage('Card');
+                const maskedCard = "XXXX XXXX XXXX " + card.slice(-4);
+                successPage('Card', '', '', name, maskedCard, expiry);
             }
         }
 
@@ -373,15 +383,18 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
             }
         }
 
-        function successPage(method, upiApp = '', upiId = '') {
+        function successPage(method, upiApp = '', upiId = '', cardName = '', cardNumber = '', expiryDate = '') {
             let url = "step4.php?payment_done=1&method=" + encodeURIComponent(method);
 
-            if (upiApp !== '') {
+            if (method === 'UPI') {
                 url += "&upi_app=" + encodeURIComponent(upiApp);
+                url += "&upi_id=" + encodeURIComponent(upiId);
             }
 
-            if (upiId !== '') {
-                url += "&upi_id=" + encodeURIComponent(upiId);
+            if (method === 'Card') {
+                url += "&card_name=" + encodeURIComponent(cardName);
+                url += "&card_number=" + encodeURIComponent(cardNumber);
+                url += "&expiry_date=" + encodeURIComponent(expiryDate);
             }
 
             window.location.href = url;
@@ -413,9 +426,7 @@ if (isset($_GET['payment_done']) && $_GET['payment_done'] == '1') {
             window.location.href = "index.php";
         }
 
-        <?php if (!$showSuccess): ?>
-            choosePayment();
-        <?php endif; ?>
+        choosePayment();
     </script>
 </body>
 

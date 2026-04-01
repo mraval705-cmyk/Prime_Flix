@@ -145,12 +145,41 @@ if ($action == "reset_password") {
         exit;
     }
 
-    if (!isset($_SESSION['otp_verified']) || $_SESSION['otp_verified'] !== true || !isset($_SESSION['forgot_email']) || $_SESSION['forgot_email'] !== $email) {
+    if (
+        !isset($_SESSION['otp_verified']) ||
+        $_SESSION['otp_verified'] !== true ||
+        !isset($_SESSION['forgot_email']) ||
+        $_SESSION['forgot_email'] !== $email
+    ) {
         echo json_encode(["status" => "error", "message" => "Please verify OTP first."]);
         exit;
     }
 
     $email_safe = mysqli_real_escape_string($conn, $email);
+
+    // old password get karo
+    $oldPassQuery = mysqli_query($conn, "SELECT password FROM users WHERE email='$email_safe' LIMIT 1");
+    $old_password = '';
+
+    if ($oldPassQuery && mysqli_num_rows($oldPassQuery) > 0) {
+        $oldRow = mysqli_fetch_assoc($oldPassQuery);
+        $old_password = mysqli_real_escape_string($conn, $oldRow['password']);
+    }
+
+    // latest otp get karo
+    $otp_value = '';
+    $otpQuery = mysqli_query($conn, "
+        SELECT otp FROM otp_requests
+        WHERE email='$email_safe'
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+
+    if ($otpQuery && mysqli_num_rows($otpQuery) > 0) {
+        $otpRow = mysqli_fetch_assoc($otpQuery);
+        $otp_value = mysqli_real_escape_string($conn, $otpRow['otp']);
+    }
+
     $hashed = password_hash($new_password, PASSWORD_DEFAULT);
     $hashed_safe = mysqli_real_escape_string($conn, $hashed);
 
@@ -159,6 +188,11 @@ if ($action == "reset_password") {
     if ($update) {
         mysqli_query($conn, "UPDATE otp_requests SET is_used=1 WHERE email='$email_safe'");
 
+        mysqli_query($conn, "
+            INSERT INTO password_reset_logs (email, otp, old_password, new_password, reset_at, status)
+            VALUES ('$email_safe', '$otp_value', '$old_password', '$hashed_safe', NOW(), 'success')
+        ");
+
         unset($_SESSION['otp_verified']);
         unset($_SESSION['forgot_email']);
         unset($_SESSION['forgot_otp']);
@@ -166,6 +200,11 @@ if ($action == "reset_password") {
 
         echo json_encode(["status" => "success", "message" => "Password reset successful. Redirecting to login..."]);
     } else {
+        mysqli_query($conn, "
+            INSERT INTO password_reset_logs (email, otp, old_password, new_password, reset_at, status)
+            VALUES ('$email_safe', '$otp_value', '$old_password', '$hashed_safe', NOW(), 'failed')
+        ");
+
         echo json_encode(["status" => "error", "message" => "Password update failed: " . mysqli_error($conn)]);
     }
     exit;
