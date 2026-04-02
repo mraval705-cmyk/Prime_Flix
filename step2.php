@@ -5,43 +5,52 @@ include "db.php";
 $emailValue = "";
 $emailServerError = "";
 $passwordServerError = "";
+$isSubmitted = false;
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $emailValue = trim($_POST['email'] ?? '');
     $password = trim($_POST['password'] ?? '');
 
-    $isValid = true;
-
-    if ($emailValue == "") {
-        $emailServerError = "Email is required.";
-        $isValid = false;
-    } elseif (!filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
-        $emailServerError = "Please enter a valid email address.";
-        $isValid = false;
+    // agar sirf home page se email aaya hai, to bas fill karo, validation mat chalao
+    if (isset($_POST['email']) && !isset($_POST['password'])) {
+        $_SESSION['reg_email'] = $emailValue;
     } else {
-        $safeEmail = mysqli_real_escape_string($conn, $emailValue);
-        $checkEmail = mysqli_query($conn, "SELECT id FROM users WHERE email='$safeEmail' LIMIT 1");
+        $isSubmitted = true;
+        $valid = true;
 
-        if ($checkEmail && mysqli_num_rows($checkEmail) > 0) {
-            $emailServerError = "This email is already registered.";
-            $isValid = false;
+        if ($emailValue == "") {
+            $emailServerError = "Please enter email.";
+            $valid = false;
+        } elseif (!filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
+            $emailServerError = "Invalid email format.";
+            $valid = false;
+        } else {
+            $safeEmail = mysqli_real_escape_string($conn, $emailValue);
+            $checkEmail = mysqli_query($conn, "SELECT id FROM users WHERE email='$safeEmail' LIMIT 1");
+
+            if ($checkEmail && mysqli_num_rows($checkEmail) > 0) {
+                $emailServerError = "This email is already registered.";
+                $valid = false;
+            }
+        }
+
+        if ($password == "") {
+            $passwordServerError = "Password is required.";
+            $valid = false;
+        } elseif (strlen($password) < 8) {
+            $passwordServerError = "Password must be at least 8 characters.";
+            $valid = false;
+        }
+
+        if ($valid) {
+            $_SESSION['reg_email'] = $emailValue;
+            $_SESSION['reg_password'] = password_hash($password, PASSWORD_DEFAULT);
+            header("Location: step3.php");
+            exit();
         }
     }
-
-    if ($password == "") {
-        $passwordServerError = "Password is required.";
-        $isValid = false;
-    } elseif (strlen($password) < 8) {
-        $passwordServerError = "Password must be at least 8 characters.";
-        $isValid = false;
-    }
-
-    if ($isValid) {
-        $_SESSION['reg_email'] = $emailValue;
-        $_SESSION['reg_password'] = password_hash($password, PASSWORD_DEFAULT);
-        header("Location: step3.php");
-        exit();
-    }
+} else {
+    $emailValue = $_SESSION['reg_email'] ?? '';
 }
 ?>
 
@@ -263,24 +272,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <h1>Create a password</h1>
 
         <p class="desc">
-            Just a few more steps and you’re done!<br>
+            Just a few more steps and you’re done!
         </p>
 
         <form method="POST" onsubmit="return validateForm()">
             <div class="form-group">
                 <input type="email" id="emailTop" name="email" placeholder="Email address"
                     value="<?php echo htmlspecialchars($emailValue); ?>" onblur="checkEmailAjax()">
-                <div class="error" id="emailError">
-                    <?php echo htmlspecialchars($emailServerError); ?>
-                </div>
+                <div class="error" id="emailError"><?php echo htmlspecialchars($emailServerError); ?></div>
                 <div class="success-msg" id="emailSuccess"></div>
             </div>
 
             <div class="form-group">
                 <input type="password" id="password" name="password" placeholder="Add a password">
-                <div class="error" id="passwordError">
-                    <?php echo htmlspecialchars($passwordServerError); ?>
-                </div>
+                <div class="error" id="passwordError"><?php echo htmlspecialchars($passwordServerError); ?></div>
             </div>
 
             <button type="submit" class="btn-primary">Next</button>
@@ -293,19 +298,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <script>
         let ajaxEmailStatus = "";
+        const formWasSubmitted = <?php echo $isSubmitted ? 'true' : 'false'; ?>;
 
-        window.onload = function () {
-            const emailServerError = `<?php echo addslashes($emailServerError); ?>`;
-            const passwordServerError = `<?php echo addslashes($passwordServerError); ?>`;
+        window.onload = function() {
+            if (formWasSubmitted) {
+                const emailServerError = `<?php echo addslashes($emailServerError); ?>`;
+                const passwordServerError = `<?php echo addslashes($passwordServerError); ?>`;
 
-            if (emailServerError !== "") {
-                document.getElementById("emailError").style.display = "block";
-                document.getElementById("emailTop").style.borderColor = "#f43f5e";
-            }
+                if (emailServerError !== "") {
+                    document.getElementById("emailError").style.display = "block";
+                    document.getElementById("emailTop").style.borderColor = "#f43f5e";
+                }
 
-            if (passwordServerError !== "") {
-                document.getElementById("passwordError").style.display = "block";
-                document.getElementById("password").style.borderColor = "#f43f5e";
+                if (passwordServerError !== "") {
+                    document.getElementById("passwordError").style.display = "block";
+                    document.getElementById("password").style.borderColor = "#f43f5e";
+                }
             }
         };
 
@@ -328,29 +336,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             resetEmailMessages();
             ajaxEmailStatus = "";
 
+            if (email === "") return;
+
             const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-            if (email === "") {
-                emailError.innerText = "Email is required.";
-                emailError.style.display = "block";
-                emailInput.style.borderColor = "#f43f5e";
-                ajaxEmailStatus = "invalid";
-                return;
-            }
-
-            if (!emailPattern.test(email)) {
-                emailError.innerText = "Please enter a valid email address.";
-                emailError.style.display = "block";
-                emailInput.style.borderColor = "#f43f5e";
-                ajaxEmailStatus = "invalid";
-                return;
-            }
+            if (!emailPattern.test(email)) return;
 
             const xhr = new XMLHttpRequest();
             xhr.open("POST", "check_email.php", true);
             xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 
-            xhr.onreadystatechange = function () {
+            xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     try {
                         const response = JSON.parse(xhr.responseText);
@@ -365,18 +360,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             emailSuccess.style.display = "block";
                             emailInput.style.borderColor = "#22c55e";
                             ajaxEmailStatus = "ok";
-                        } else {
-                            emailError.innerText = response.message;
-                            emailError.style.display = "block";
-                            emailInput.style.borderColor = "#f43f5e";
-                            ajaxEmailStatus = "invalid";
                         }
-                    } catch (e) {
-                        emailError.innerText = "Something went wrong while checking email.";
-                        emailError.style.display = "block";
-                        emailInput.style.borderColor = "#f43f5e";
-                        ajaxEmailStatus = "invalid";
-                    }
+                    } catch (e) {}
                 }
             };
 

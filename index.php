@@ -93,6 +93,65 @@ $result = mysqli_query($conn, $query);
             cursor: pointer;
         }
 
+        .right-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .search-form {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-input {
+            padding: 10px 14px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            outline: none;
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            width: 190px;
+            font-size: 14px;
+        }
+
+        .search-input::placeholder {
+            color: #cbd5e1;
+        }
+
+        .search-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 30px;
+            background: #00d4ff;
+            color: black;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .search-btn:hover {
+            opacity: 0.9;
+        }
+
+        .lang-select {
+            padding: 10px 14px;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            outline: none;
+        }
+
+        .signin-btn {
+            padding: 10px 22px;
+            border-radius: 30px;
+            background: #00d4ff;
+            color: black;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
         .language option {
             color: black;
         }
@@ -521,13 +580,16 @@ $result = mysqli_query($conn, $query);
 
     <header class="header">
         <div class="logo">WATCHWISE</div>
-        <div class="header-right">
-            <select class="language" onchange="changeLanguage(this.value)">
-                <option value="en">English</option>
-                <option value="hi">हिन्दी</option>
-            </select>
-            <a href="Signup.php" class="signin" data-key="signin">Sign In</a>
+        <div class="right-section">
+
+            <form action="step2.php" method="POST">
+                <input type="email" name="email" placeholder="Enter your email" required>
+                <button type="submit">Get Started</button>
+            </form>
+
+            <a href="Signup.php" class="signin-btn">Sign In</a>
         </div>
+
     </header>
 
     <section class="hero">
