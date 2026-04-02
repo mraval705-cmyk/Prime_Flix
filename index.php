@@ -76,27 +76,11 @@ $result = mysqli_query($conn, $query);
             letter-spacing: 1px;
         }
 
-        .header-right {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .language {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            outline: none;
-            cursor: pointer;
-        }
-
         .right-section {
             display: flex;
             align-items: center;
             gap: 12px;
+            flex-wrap: wrap;
         }
 
         .search-form {
@@ -128,6 +112,7 @@ $result = mysqli_query($conn, $query);
             color: black;
             font-weight: 600;
             cursor: pointer;
+            transition: 0.3s;
         }
 
         .search-btn:hover {
@@ -141,6 +126,11 @@ $result = mysqli_query($conn, $query);
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.15);
             outline: none;
+            cursor: pointer;
+        }
+
+        .lang-select option {
+            color: black;
         }
 
         .signin-btn {
@@ -150,26 +140,11 @@ $result = mysqli_query($conn, $query);
             color: black;
             text-decoration: none;
             font-weight: 600;
-        }
-
-        .language option {
-            color: black;
-        }
-
-        .signin {
-            padding: 8px 25px;
-            background: var(--primary);
-            color: #000;
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 20px;
-            text-decoration: none;
             transition: 0.3s;
         }
 
-        .signin:hover {
+        .signin-btn:hover {
             background: var(--primary-hover);
-            box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
         }
 
         .hero {
@@ -202,6 +177,10 @@ $result = mysqli_query($conn, $query);
             margin-bottom: 30px;
         }
 
+        .email-form {
+            max-width: 540px;
+        }
+
         .email-box {
             display: flex;
             gap: 10px;
@@ -220,6 +199,10 @@ $result = mysqli_query($conn, $query);
             color: #fff;
             font-size: 16px;
             outline: none;
+        }
+
+        .email-box input::placeholder {
+            color: #cbd5e1;
         }
 
         .email-box button {
@@ -528,7 +511,29 @@ $result = mysqli_query($conn, $query);
             z-index: 1001;
         }
 
+        @media (max-width: 900px) {
+            .right-section {
+                gap: 10px;
+            }
+
+            .search-input {
+                width: 150px;
+            }
+        }
+
         @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .right-section {
+                width: 100%;
+                justify-content: flex-start;
+                flex-wrap: wrap;
+            }
+
             .hero {
                 text-align: center;
                 background: linear-gradient(0deg, #0b0f19 20%, rgba(11, 15, 25, 0.7) 100%), url("https://image.tmdb.org/t/p/original/rMZonJhnHk0uPqQW524qA7tYmIQ.jpg") center/cover;
@@ -572,6 +577,14 @@ $result = mysqli_query($conn, $query);
             .footer-top {
                 grid-template-columns: 1fr;
             }
+
+            .search-form {
+                width: 100%;
+            }
+
+            .search-input {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -580,16 +593,16 @@ $result = mysqli_query($conn, $query);
 
     <header class="header">
         <div class="logo">WATCHWISE</div>
-        <div class="right-section">
 
-            <form action="step2.php" method="POST">
-                <input type="email" name="email" placeholder="Enter your email" required>
-                <button type="submit">Get Started</button>
+        <div class="right-section">
+            <form action="search.php" method="GET" class="search-form">
+                <input type="text" name="query" placeholder="Search movies..." class="search-input" required>
+                <button type="submit" class="search-btn">Search</button>
             </form>
+
 
             <a href="Signup.php" class="signin-btn">Sign In</a>
         </div>
-
     </header>
 
     <section class="hero">
@@ -597,11 +610,13 @@ $result = mysqli_query($conn, $query);
             <h1 data-key="title">Dive into endless entertainment.</h1>
             <h2 data-key="subtitle">Premium movies & shows. Starts at ₹149.</h2>
 
-            <div class="email-box">
-                <input type="email" id="emailTop" placeholder="Enter your email address">
-                <button onclick="validateEmail('emailTop')">Get Started</button>
-            </div>
-            <div class="error" id="errorTop"></div>
+            <form action="step2.php" method="POST" class="email-form" onsubmit="return validateHeroEmail()">
+                <div class="email-box">
+                    <input type="email" id="heroEmail" name="email" placeholder="Enter your email address">
+                    <button type="submit">Get Started</button>
+                </div>
+                <div class="error" id="errorTop"></div>
+            </form>
         </div>
     </section>
 
@@ -615,12 +630,12 @@ $result = mysqli_query($conn, $query);
                 if ($result && mysqli_num_rows($result) > 0) {
                     while ($row = mysqli_fetch_assoc($result)) {
                         echo '<img src="' . htmlspecialchars($row['image_url']) . '" 
-                               data-title="' . htmlspecialchars($row['title']) . '" 
-                               data-desc="' . htmlspecialchars($row['description']) . '" 
-                               data-year="' . htmlspecialchars($row['release_year']) . '" 
-                               data-rating="' . htmlspecialchars($row['rating']) . '" 
-                               data-trailer="' . htmlspecialchars($row['trailer_url'] ?? '') . '" 
-                               onclick="openModal(this)">';
+                           data-title="' . htmlspecialchars($row['title']) . '" 
+                           data-desc="' . htmlspecialchars($row['description']) . '" 
+                           data-year="' . htmlspecialchars($row['release_year']) . '" 
+                           data-rating="' . htmlspecialchars($row['rating']) . '" 
+                           data-trailer="' . htmlspecialchars($row['trailer_url'] ?? '') . '" 
+                           onclick="openModal(this)">';
                     }
                 } else {
                     echo "<p>No movies found.</p>";
@@ -689,11 +704,14 @@ $result = mysqli_query($conn, $query);
 
         <div style="margin-top: 50px; text-align: center;">
             <p style="margin-bottom: 20px; color: var(--text-muted);">Ready to start watching? Enter your email to create an account.</p>
-            <div class="email-box" style="margin: auto;">
-                <input type="email" id="emailBottom" placeholder="Enter your email address">
-                <button onclick="validateEmail('emailBottom')">Get Started</button>
-            </div>
-            <div class="error" id="errorBottom"></div>
+
+            <form action="step2.php" method="POST" class="email-form" onsubmit="return validateBottomEmail()">
+                <div class="email-box" style="margin: auto;">
+                    <input type="email" id="emailBottom" name="email" placeholder="Enter your email address">
+                    <button type="submit">Get Started</button>
+                </div>
+                <div class="error" id="errorBottom"></div>
+            </form>
         </div>
     </section>
 
@@ -750,7 +768,7 @@ $result = mysqli_query($conn, $query);
                 <p id="modalDesc">Description goes here.</p>
 
                 <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:20px;">
-                    <a href="step1.php" class="btn-modal">Watch Movie</a>
+                    <a href="step2.php" class="btn-modal">Watch Movie</a>
                     <button type="button" class="btn-modal" id="trailerBtn" onclick="openTrailerModal()">Watch Trailer</button>
                 </div>
             </div>
@@ -788,22 +806,40 @@ $result = mysqli_query($conn, $query);
             }
         }
 
-        function validateEmail(id) {
-            let email = document.getElementById(id).value;
-            let error = document.getElementById(id === "emailTop" ? "errorTop" : "errorBottom");
+        function validateHeroEmail() {
+            let email = document.getElementById("heroEmail").value.trim();
+            let error = document.getElementById("errorTop");
             let regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
             if (email === "") {
                 error.innerHTML = "Email is required!";
-                return;
+                return false;
             }
             if (!regex.test(email)) {
                 error.innerHTML = "Enter a valid email!";
-                return;
+                return false;
             }
 
             error.innerHTML = "";
-            window.location.href = "step1.php?email=" + encodeURIComponent(email);
+            return true;
+        }
+
+        function validateBottomEmail() {
+            let email = document.getElementById("emailBottom").value.trim();
+            let error = document.getElementById("errorBottom");
+            let regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (email === "") {
+                error.innerHTML = "Email is required!";
+                return false;
+            }
+            if (!regex.test(email)) {
+                error.innerHTML = "Enter a valid email!";
+                return false;
+            }
+
+            error.innerHTML = "";
+            return true;
         }
 
         function openModal(el) {
@@ -847,10 +883,6 @@ $result = mysqli_query($conn, $query);
         function closeTrailerModal() {
             document.getElementById("trailerFrame").src = "";
             document.getElementById("trailerModal").style.display = "none";
-        }
-
-        function changeLanguage(lang) {
-            // placeholder
         }
 
         window.onclick = function(event) {
