@@ -92,9 +92,10 @@ if ($query != "") {
         }
 
         .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            align-items: flex-start;
         }
 
         .movie-card {
@@ -102,13 +103,31 @@ if ($query != "") {
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+            width: 260px;
+            backdrop-filter: blur(10px);
         }
 
         .movie-card img {
             width: 100%;
-            height: 320px;
+            height: 340px;
             object-fit: cover;
             display: block;
+        }
+
+        .movie-content {
+            padding: 15px;
+        }
+
+        .movie-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .movie-desc {
+            font-size: 14px;
+            color: #d1d5db;
+            line-height: 1.5;
         }
 
         .movie-content {
