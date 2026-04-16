@@ -27,8 +27,8 @@ if ($query != "") {
     }
 
     // movies search
-    $sql = "SELECT * FROM movies 
-            WHERE title LIKE '%$safe_query%' 
+    $sql = "SELECT * FROM movies
+            WHERE title LIKE '%$safe_query%'
             OR description LIKE '%$safe_query%'";
 
     $run = mysqli_query($conn, $sql);
@@ -40,7 +40,6 @@ if ($query != "") {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -98,6 +97,11 @@ if ($query != "") {
             align-items: flex-start;
         }
 
+        .movie-link {
+            text-decoration: none;
+            color: inherit;
+        }
+
         .movie-card {
             background: rgba(255, 255, 255, 0.06);
             border-radius: 16px;
@@ -105,6 +109,14 @@ if ($query != "") {
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
             width: 260px;
             backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: 0.3s ease;
+            cursor: pointer;
+        }
+
+        .movie-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
         }
 
         .movie-card img {
@@ -112,22 +124,6 @@ if ($query != "") {
             height: 340px;
             object-fit: cover;
             display: block;
-        }
-
-        .movie-content {
-            padding: 15px;
-        }
-
-        .movie-title {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .movie-desc {
-            font-size: 14px;
-            color: #d1d5db;
-            line-height: 1.5;
         }
 
         .movie-content {
@@ -169,13 +165,15 @@ if ($query != "") {
         <?php if (!empty($results)) { ?>
             <div class="grid">
                 <?php foreach ($results as $movie) { ?>
-                    <div class="movie-card">
-                        <img src="<?php echo htmlspecialchars($movie['image_url']); ?>" alt="Movie Image">
-                        <div class="movie-content">
-                            <div class="movie-title"><?php echo htmlspecialchars($movie['title']); ?></div>
-                            <div class="movie-desc"><?php echo htmlspecialchars($movie['description']); ?></div>
+                    <a href="movie_detail.php?id=<?php echo $movie['id']; ?>" class="movie-link">
+                        <div class="movie-card">
+                            <img src="<?php echo htmlspecialchars($movie['image_url']); ?>" alt="<?php echo htmlspecialchars($movie['title']); ?>">
+                            <div class="movie-content">
+                                <div class="movie-title"><?php echo htmlspecialchars($movie['title']); ?></div>
+                                <div class="movie-desc"><?php echo htmlspecialchars($movie['description']); ?></div>
+                            </div>
                         </div>
-                    </div>
+                    </a>
                 <?php } ?>
             </div>
         <?php } else { ?>

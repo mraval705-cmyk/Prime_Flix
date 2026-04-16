@@ -11,7 +11,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $emailValue = trim($_POST['email'] ?? '');
     $password = trim($_POST['password'] ?? '');
 
-    // agar sirf home page se email aaya hai, to bas fill karo, validation mat chalao
     if (isset($_POST['email']) && !isset($_POST['password'])) {
         $_SESSION['reg_email'] = $emailValue;
     } else {
@@ -59,7 +58,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <head>
     <meta charset="UTF-8">
-    <title>Watchwise - Create a password</title>
+    <title>Watchwise - Create your account</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
@@ -84,10 +83,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         body::before {
             content: "";
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(2, 6, 23, 0.8) 100%);
             z-index: -1;
         }
@@ -129,10 +125,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         .center-box {
             width: 100%;
-            max-width: 450px;
-            margin: 60px auto;
+            max-width: 420px;
+            margin: 40px auto;
             background: rgba(30, 41, 59, 0.65);
-            padding: 45px 40px;
+            padding: 35px 40px;
             border-radius: 20px;
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
@@ -195,8 +191,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             color: #f43f5e;
             font-size: 12px;
             margin-top: 8px;
-            display: none;
+            display: block;
             padding-left: 5px;
+            min-height: 18px;
         }
 
         .success-msg {
@@ -268,17 +265,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <div class="center-box">
         <p class="step">Step 1 of 3</p>
-
-        <h1>Create a password</h1>
-
-        <p class="desc">
-            Just a few more steps and you’re done!
-        </p>
+        <h1>Create your account</h1>
+        <p class="desc">Just a few more steps and you’re done!</p>
 
         <form method="POST" onsubmit="return validateForm()">
+
             <div class="form-group">
-                <input type="email" id="emailTop" name="email" placeholder="Email address"
-                    value="<?php echo htmlspecialchars($emailValue); ?>" onblur="checkEmailAjax()">
+                <input type="email" id="emailTop" name="email" placeholder="Email address" value="<?php echo htmlspecialchars($emailValue); ?>" onblur="checkEmailAjax()">
                 <div class="error" id="emailError"><?php echo htmlspecialchars($emailServerError); ?></div>
                 <div class="success-msg" id="emailSuccess"></div>
             </div>
@@ -305,15 +298,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 const emailServerError = `<?php echo addslashes($emailServerError); ?>`;
                 const passwordServerError = `<?php echo addslashes($passwordServerError); ?>`;
 
-                if (emailServerError !== "") {
-                    document.getElementById("emailError").style.display = "block";
-                    document.getElementById("emailTop").style.borderColor = "#f43f5e";
-                }
-
-                if (passwordServerError !== "") {
-                    document.getElementById("passwordError").style.display = "block";
-                    document.getElementById("password").style.borderColor = "#f43f5e";
-                }
+                if (emailServerError !== "") document.getElementById("emailTop").style.borderColor = "#f43f5e";
+                if (passwordServerError !== "") document.getElementById("password").style.borderColor = "#f43f5e";
             }
         };
 
@@ -321,7 +307,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const emailError = document.getElementById("emailError");
             const emailSuccess = document.getElementById("emailSuccess");
             const emailInput = document.getElementById("emailTop");
-
             emailError.style.display = "none";
             emailSuccess.style.display = "none";
             emailInput.style.borderColor = "rgba(255, 255, 255, 0.15)";
@@ -349,7 +334,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     try {
                         const response = JSON.parse(xhr.responseText);
-
                         if (response.status === "exists") {
                             emailError.innerText = response.message;
                             emailError.style.display = "block";
@@ -373,6 +357,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             const emailInput = document.getElementById("emailTop");
             const passwordInput = document.getElementById("password");
+
             const email = emailInput.value.trim();
             const password = passwordInput.value.trim();
 
@@ -381,12 +366,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const emailSuccess = document.getElementById("emailSuccess");
 
             emailError.style.display = "none";
-            passwordError.style.display = "none";
+            passwordError.innerText = "";
             emailSuccess.style.display = "none";
+
             emailInput.style.borderColor = "rgba(255, 255, 255, 0.15)";
             passwordInput.style.borderColor = "rgba(255, 255, 255, 0.15)";
 
             const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 
             if (email === "") {
                 emailError.innerText = "Email is required.";
@@ -407,12 +394,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             if (password === "") {
                 passwordError.innerText = "Password is required.";
-                passwordError.style.display = "block";
                 passwordInput.style.borderColor = "#f43f5e";
                 isValid = false;
             } else if (password.length < 8) {
                 passwordError.innerText = "Password must be at least 8 characters.";
-                passwordError.style.display = "block";
                 passwordInput.style.borderColor = "#f43f5e";
                 isValid = false;
             }

@@ -18,7 +18,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_email'] = $user['email'];
-            header("Location: index.php");
+            header("Location: user_movie.php");
             exit();
         } else {
             $error = "Invalid Password!";
@@ -275,8 +275,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </header>
 
     <div class="container">
-        <h1>Welcome back</h1>
-        <p>Sign in to continue to Watchwise</p>
+        <h1><?php echo htmlspecialchars($page_content['title'] ?? 'Welcome back'); ?></h1>
+        <p><?php echo htmlspecialchars($page_content['subtitle'] ?? 'Sign in to continue to Watchwise'); ?></p>
 
         <?php if (!empty($error)) : ?>
             <div class="server-error"><?php echo $error; ?></div>

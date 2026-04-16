@@ -2,8 +2,61 @@
 session_start();
 include "db.php";
 
-$query = "SELECT * FROM movies WHERE category = 'trending' AND is_active = 1";
-$result = mysqli_query($conn, $query);
+/* ---------------- FETCH HERO ---------------- */
+$hero = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM hero_slides LIMIT 1"));
+
+/* ---------------- FETCH SITE SETTINGS ---------------- */
+$settings = [];
+$settings_query = mysqli_query($conn, "SELECT setting_key, setting_value FROM site_settings");
+if ($settings_query) {
+    while ($row = mysqli_fetch_assoc($settings_query)) {
+        $settings[$row['setting_key']] = $row['setting_value'];
+    }
+}
+
+/* ---------------- FETCH MOVIES ---------------- */
+$trending_result = mysqli_query($conn, "SELECT * FROM movies WHERE category = 'trending' AND is_active = 1 ORDER BY id DESC");
+
+/* ---------------- FETCH FEATURES ---------------- */
+$features_result = mysqli_query($conn, "SELECT * FROM features ORDER BY id DESC");
+
+/* ---------------- FETCH FAQS ---------------- */
+$faqs_result = mysqli_query($conn, "SELECT * FROM faqs ORDER BY id DESC");
+
+/* ---------------- FETCH FOOTER LINKS ---------------- */
+$footer_links_result = mysqli_query($conn, "SELECT * FROM footer_links WHERE is_active = 1 ORDER BY section_name, sort_order ASC");
+
+$footer_sections = [
+    "Company" => [],
+    "Support" => [],
+    "Legal" => []
+];
+
+if ($footer_links_result) {
+    while ($row = mysqli_fetch_assoc($footer_links_result)) {
+        $section = $row['section_name'];
+        if (!isset($footer_sections[$section])) {
+            $footer_sections[$section] = [];
+        }
+        $footer_sections[$section][] = $row;
+    }
+}
+
+/* ---------------- FETCH OFFERS ---------------- */
+$offers_result = mysqli_query($conn, "SELECT coupon_code, discount_type, discount_value, min_amount FROM offers WHERE is_active = 1 AND valid_until >= CURDATE() ORDER BY id DESC LIMIT 6");
+
+
+/* ---------------- FALLBACKS ---------------- */
+$hero_title = $hero['title'] ?? 'Dive into endless entertainment.';
+$hero_subtitle = $hero['subtitle'] ?? 'Premium movies & shows. Starts at ₹149.';
+$hero_image = !empty($hero['image_url'])
+    ? $hero['image_url']
+    : 'https://images.unsplash.com/photo-1524985069026-dd778a71c7b4';
+
+$why_choose_title = $settings['why_choose_title'] ?? 'Why choose Watchwise?';
+$faq_title = $settings['faq_title'] ?? 'Got Questions?';
+$cta_text = $settings['cta_text'] ?? 'Ready to start watching? Enter your email to create an account.';
+$footer_about = $settings['footer_about'] ?? 'Watchwise is your modern movie discovery platform with premium plans, trailers and trending entertainment in one place.';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -12,7 +65,7 @@ $result = mysqli_query($conn, $query);
     <meta charset="UTF-8">
     <title>WATCHWISE</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap">
 
     <style>
         :root {
@@ -119,20 +172,6 @@ $result = mysqli_query($conn, $query);
             opacity: 0.9;
         }
 
-        .lang-select {
-            padding: 10px 14px;
-            border-radius: 30px;
-            background: rgba(255, 255, 255, 0.08);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            outline: none;
-            cursor: pointer;
-        }
-
-        .lang-select option {
-            color: black;
-        }
-
         .signin-btn {
             padding: 10px 22px;
             border-radius: 30px;
@@ -151,7 +190,7 @@ $result = mysqli_query($conn, $query);
             height: 100vh;
             background:
                 linear-gradient(90deg, rgba(11, 15, 25, 0.95) 25%, rgba(11, 15, 25, 0.5) 100%),
-                url("https://images.unsplash.com/photo-1524985069026-dd778a71c7b4") center/cover no-repeat;
+                url("<?php echo htmlspecialchars($hero_image); ?>") center/cover no-repeat;
             display: flex;
             align-items: center;
             padding: 0 5%;
@@ -511,6 +550,85 @@ $result = mysqli_query($conn, $query);
             z-index: 1001;
         }
 
+        .offers-strip-section {
+            padding: 22px 5% 10px;
+            background: linear-gradient(180deg, rgba(2, 6, 23, 0.96), rgba(11, 15, 25, 0.92));
+        }
+
+        .offers-strip {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .offer-pill {
+            min-height: 42px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
+            font-size: 12px;
+            line-height: 1.2;
+            backdrop-filter: blur(8px);
+            transition: 0.25s ease;
+        }
+
+        .offer-pill:hover {
+            transform: translateY(-2px);
+            border-color: rgba(0, 229, 255, 0.45);
+            box-shadow: 0 10px 20px rgba(0, 229, 255, 0.08);
+        }
+
+        .offer-pill-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .offer-pill strong {
+            color: #ffffff;
+            font-size: 12px;
+        }
+
+        .offer-pill a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .offer-pill a:hover {
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .offers-strip-section {
+                padding: 16px 4% 6px;
+            }
+
+            .offers-strip {
+                gap: 8px;
+            }
+
+            .offer-pill {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+
         @media (max-width: 900px) {
             .right-section {
                 gap: 10px;
@@ -536,7 +654,9 @@ $result = mysqli_query($conn, $query);
 
             .hero {
                 text-align: center;
-                background: linear-gradient(0deg, #0b0f19 20%, rgba(11, 15, 25, 0.7) 100%), url("https://image.tmdb.org/t/p/original/rMZonJhnHk0uPqQW524qA7tYmIQ.jpg") center/cover;
+                background:
+                    linear-gradient(0deg, #0b0f19 20%, rgba(11, 15, 25, 0.7) 100%),
+                    url("<?php echo htmlspecialchars($hero_image); ?>") center/cover;
             }
 
             .hero-content {
@@ -600,15 +720,14 @@ $result = mysqli_query($conn, $query);
                 <button type="submit" class="search-btn">Search</button>
             </form>
 
-
             <a href="Signup.php" class="signin-btn">Sign In</a>
         </div>
     </header>
 
     <section class="hero">
         <div class="hero-content">
-            <h1 data-key="title">Dive into endless entertainment.</h1>
-            <h2 data-key="subtitle">Premium movies & shows. Starts at ₹149.</h2>
+            <h1><?php echo htmlspecialchars($hero_title); ?></h1>
+            <h2><?php echo htmlspecialchars($hero_subtitle); ?></h2>
 
             <form action="step2.php" method="POST" class="email-form" onsubmit="return validateHeroEmail()">
                 <div class="email-box">
@@ -620,6 +739,8 @@ $result = mysqli_query($conn, $query);
         </div>
     </section>
 
+
+
     <section class="section">
         <h2>Trending Now</h2>
         <div class="trending-wrapper">
@@ -627,14 +748,14 @@ $result = mysqli_query($conn, $query);
 
             <div class="trending" id="trendingSection">
                 <?php
-                if ($result && mysqli_num_rows($result) > 0) {
-                    while ($row = mysqli_fetch_assoc($result)) {
-                        echo '<img src="' . htmlspecialchars($row['image_url']) . '" 
-                           data-title="' . htmlspecialchars($row['title']) . '" 
-                           data-desc="' . htmlspecialchars($row['description']) . '" 
-                           data-year="' . htmlspecialchars($row['release_year']) . '" 
-                           data-rating="' . htmlspecialchars($row['rating']) . '" 
-                           data-trailer="' . htmlspecialchars($row['trailer_url'] ?? '') . '" 
+                if ($trending_result && mysqli_num_rows($trending_result) > 0) {
+                    while ($row = mysqli_fetch_assoc($trending_result)) {
+                        echo '<img src="' . htmlspecialchars($row['image_url']) . '"
+                           data-title="' . htmlspecialchars($row['title']) . '"
+                           data-desc="' . htmlspecialchars($row['description']) . '"
+                           data-year="' . htmlspecialchars($row['release_year']) . '"
+                           data-rating="' . htmlspecialchars($row['rating']) . '"
+                           data-trailer="' . htmlspecialchars($row['trailer_url'] ?? '') . '"
                            onclick="openModal(this)">';
                     }
                 } else {
@@ -648,103 +769,86 @@ $result = mysqli_query($conn, $query);
     </section>
 
     <section class="section">
-        <h2>Why choose Watchwise?</h2>
+        <h2><?php echo htmlspecialchars($why_choose_title); ?></h2>
         <div class="cards">
-            <div class="card">
-                <h3>Seamless TV Experience</h3>
-                <p>Watch on smart TVs, PlayStation, Xbox, Apple TV, Chromecast and more.</p>
-            </div>
-            <div class="card">
-                <h3>Download & Go</h3>
-                <p>Save your favourite movies and shows to watch later anytime, even offline.</p>
-            </div>
-            <div class="card">
-                <h3>Watch Everywhere</h3>
-                <p>Enjoy on phone, tablet, laptop and TV with one premium account.</p>
-            </div>
-            <div class="card">
-                <h3>Kids Safe Profiles</h3>
-                <p>Create a safe and fun space for kids with family-friendly entertainment.</p>
-            </div>
+            <?php if ($features_result && mysqli_num_rows($features_result) > 0): ?>
+                <?php while ($feature = mysqli_fetch_assoc($features_result)): ?>
+                    <div class="card">
+                        <h3><?php echo htmlspecialchars($feature['title']); ?></h3>
+                        <p><?php echo htmlspecialchars($feature['description']); ?></p>
+                    </div>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <div class="card">
+                    <h3>Seamless TV Experience</h3>
+                    <p>Watch on smart TVs, PlayStation, Xbox, Apple TV, Chromecast and more.</p>
+                </div>
+                <div class="card">
+                    <h3>Download & Go</h3>
+                    <p>Save your favourite movies and shows to watch later anytime, even offline.</p>
+                </div>
+                <div class="card">
+                    <h3>Watch Everywhere</h3>
+                    <p>Enjoy on phone, tablet, laptop and TV with one premium account.</p>
+                </div>
+                <div class="card">
+                    <h3>Kids Safe Profiles</h3>
+                    <p>Create a safe and fun space for kids with family-friendly entertainment.</p>
+                </div>
+            <?php endif; ?>
         </div>
     </section>
 
     <section class="section">
-        <h2>Got Questions?</h2>
+        <h2><?php echo htmlspecialchars($faq_title); ?></h2>
 
-        <div class="faq-item" onclick="toggleFaq(this)">
-            <div class="faq-title">
-                What is Watchwise?
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">
-                Watchwise is a premium streaming platform where users can discover and enjoy movies, shows and trailers.
-            </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-            <div class="faq-title">
-                How much does Watchwise cost?
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">
-                Plans start at ₹149 and go up depending on quality and screens.
-            </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-            <div class="faq-title">
-                Can I watch trailers before subscribing?
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">
-                Yes. In the trending section you can open a movie card and watch its trailer inside the website.
-            </div>
-        </div>
-
-        <div style="margin-top: 50px; text-align: center;">
-            <p style="margin-bottom: 20px; color: var(--text-muted);">Ready to start watching? Enter your email to create an account.</p>
-
-            <form action="step2.php" method="POST" class="email-form" onsubmit="return validateBottomEmail()">
-                <div class="email-box" style="margin: auto;">
-                    <input type="email" id="emailBottom" name="email" placeholder="Enter your email address">
-                    <button type="submit">Get Started</button>
+        <?php if ($faqs_result && mysqli_num_rows($faqs_result) > 0): ?>
+            <?php while ($faq = mysqli_fetch_assoc($faqs_result)): ?>
+                <div class="faq-item" onclick="toggleFaq(this)">
+                    <div class="faq-title">
+                        <?php echo htmlspecialchars($faq['question']); ?>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <?php echo htmlspecialchars($faq['answer']); ?>
+                    </div>
                 </div>
-                <div class="error" id="errorBottom"></div>
-            </form>
-        </div>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-title">
+                    What is Watchwise?
+                    <span class="faq-icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    Watchwise is a premium streaming platform where users can discover and enjoy movies, shows and trailers.
+                </div>
+            </div>
+        <?php endif; ?>
+
     </section>
 
     <footer class="footer">
         <div class="footer-top">
             <div>
                 <h2>WATCHWISE</h2>
-                <p>Watchwise is your modern movie discovery platform with premium plans, trailers and trending entertainment in one place.</p>
+                <p><?php echo htmlspecialchars($footer_about); ?></p>
             </div>
 
-            <div>
-                <h4>Company</h4>
-                <a href="#">About Us</a>
-                <a href="#">Careers</a>
-                <a href="#">Press</a>
-                <a href="#">Investors</a>
-            </div>
-
-            <div>
-                <h4>Support</h4>
-                <a href="#">Help Centre</a>
-                <a href="#">FAQ</a>
-                <a href="#">Account</a>
-                <a href="#">Contact Us</a>
-            </div>
-
-            <div>
-                <h4>Legal</h4>
-                <a href="#">Terms of Use</a>
-                <a href="#">Privacy Policy</a>
-                <a href="#">Cookie Policy</a>
-                <a href="#">Corporate Information</a>
-            </div>
+            <?php foreach ($footer_sections as $section_name => $links): ?>
+                <div>
+                    <h4><?php echo htmlspecialchars($section_name); ?></h4>
+                    <?php if (!empty($links)): ?>
+                        <?php foreach ($links as $link): ?>
+                            <a href="<?php echo htmlspecialchars($link['url']); ?>">
+                                <?php echo htmlspecialchars($link['label']); ?>
+                            </a>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <a href="#">No links</a>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
         </div>
 
         <div class="footer-bottom">
@@ -768,7 +872,7 @@ $result = mysqli_query($conn, $query);
                 <p id="modalDesc">Description goes here.</p>
 
                 <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:20px;">
-                    <a href="step2.php" class="btn-modal">Watch Movie</a>
+                    <a href="Signup.php" class="btn-modal">Watch Movie</a>
                     <button type="button" class="btn-modal" id="trailerBtn" onclick="openTrailerModal()">Watch Trailer</button>
                 </div>
             </div>
