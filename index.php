@@ -522,6 +522,8 @@ $footer_about = $settings['footer_about'] ?? 'Watchwise is your modern movie dis
     </style>
 </head>
 
+
+
 <body>
 
     <header class="header">
