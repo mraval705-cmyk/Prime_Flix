@@ -2,8 +2,61 @@
 session_start();
 include "db.php";
 
-$query = "SELECT * FROM movies WHERE category = 'trending' AND is_active = 1";
-$result = mysqli_query($conn, $query);
+/* ---------------- FETCH HERO ---------------- */
+$hero = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM hero_slides LIMIT 1"));
+
+/* ---------------- FETCH SITE SETTINGS ---------------- */
+$settings = [];
+$settings_query = mysqli_query($conn, "SELECT setting_key, setting_value FROM site_settings");
+if ($settings_query) {
+    while ($row = mysqli_fetch_assoc($settings_query)) {
+        $settings[$row['setting_key']] = $row['setting_value'];
+    }
+}
+
+/* ---------------- FETCH MOVIES ---------------- */
+$trending_result = mysqli_query($conn, "SELECT * FROM movies WHERE category = 'trending' AND is_active = 1 ORDER BY id DESC");
+
+/* ---------------- FETCH FEATURES ---------------- */
+$features_result = mysqli_query($conn, "SELECT * FROM features ORDER BY id DESC");
+
+/* ---------------- FETCH FAQS ---------------- */
+$faqs_result = mysqli_query($conn, "SELECT * FROM faqs ORDER BY id DESC");
+
+/* ---------------- FETCH FOOTER LINKS ---------------- */
+$footer_links_result = mysqli_query($conn, "SELECT * FROM footer_links WHERE is_active = 1 ORDER BY section_name, sort_order ASC");
+
+$footer_sections = [
+    "Company" => [],
+    "Support" => [],
+    "Legal" => []
+];
+
+if ($footer_links_result) {
+    while ($row = mysqli_fetch_assoc($footer_links_result)) {
+        $section = $row['section_name'];
+        if (!isset($footer_sections[$section])) {
+            $footer_sections[$section] = [];
+        }
+        $footer_sections[$section][] = $row;
+    }
+}
+
+/* ---------------- FETCH OFFERS ---------------- */
+$offers_result = mysqli_query($conn, "SELECT coupon_code, discount_type, discount_value, min_amount FROM offers WHERE is_active = 1 AND valid_until >= CURDATE() ORDER BY id DESC LIMIT 6");
+
+
+/* ---------------- FALLBACKS ---------------- */
+$hero_title = $hero['title'] ?? 'Dive into endless entertainment.';
+$hero_subtitle = $hero['subtitle'] ?? 'Premium movies & shows. Starts at ₹149.';
+$hero_image = !empty($hero['image_url'])
+    ? $hero['image_url']
+    : 'https://images.unsplash.com/photo-1524985069026-dd778a71c7b4';
+
+$why_choose_title = $settings['why_choose_title'] ?? 'Why choose Watchwise?';
+$faq_title = $settings['faq_title'] ?? 'Got Questions?';
+$cta_text = $settings['cta_text'] ?? 'Ready to start watching? Enter your email to create an account.';
+$footer_about = $settings['footer_about'] ?? 'Watchwise is your modern movie discovery platform with premium plans, trailers and trending entertainment in one place.';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -12,7 +65,7 @@ $result = mysqli_query($conn, $query);
     <meta charset="UTF-8">
     <title>WATCHWISE</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap">
 
     <style>
         :root {
@@ -37,6 +90,7 @@ $result = mysqli_query($conn, $query);
             overflow-x: hidden;
         }
 
+        /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -80,22 +134,15 @@ $result = mysqli_query($conn, $query);
             display: flex;
             align-items: center;
             gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .search-form {
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
 
         .search-input {
             padding: 10px 14px;
             border-radius: 30px;
             border: 1px solid rgba(255, 255, 255, 0.15);
-            outline: none;
             background: rgba(255, 255, 255, 0.08);
             color: white;
+            outline: none;
             width: 190px;
             font-size: 14px;
         }
@@ -119,113 +166,69 @@ $result = mysqli_query($conn, $query);
             opacity: 0.9;
         }
 
-        .lang-select {
-            padding: 10px 14px;
-            border-radius: 30px;
-            background: rgba(255, 255, 255, 0.08);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            outline: none;
-            cursor: pointer;
-        }
-
-        .lang-select option {
-            color: black;
-        }
-
         .signin-btn {
             padding: 10px 22px;
             border-radius: 30px;
-            background: #00d4ff;
+            background: var(--primary);
             color: black;
-            text-decoration: none;
             font-weight: 600;
-            transition: 0.3s;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
         }
 
-        .signin-btn:hover {
-            background: var(--primary-hover);
-        }
-
+        /* Hero */
         .hero {
             height: 100vh;
             background:
                 linear-gradient(90deg, rgba(11, 15, 25, 0.95) 25%, rgba(11, 15, 25, 0.5) 100%),
-                url("https://images.unsplash.com/photo-1524985069026-dd778a71c7b4") center/cover no-repeat;
+                url("<?php echo htmlspecialchars($hero_image); ?>") center/cover no-repeat;
             display: flex;
             align-items: center;
             padding: 0 5%;
-            position: relative;
         }
 
         .hero-content {
             max-width: 650px;
-            margin-top: 50px;
         }
 
         .hero h1 {
             font-size: 3.5rem;
             line-height: 1.2;
             margin-bottom: 20px;
-            font-weight: 700;
         }
 
         .hero h2 {
             font-size: 1.5rem;
-            font-weight: 400;
             color: var(--text-muted);
             margin-bottom: 30px;
-        }
-
-        .email-form {
-            max-width: 540px;
         }
 
         .email-box {
             display: flex;
             gap: 10px;
-            max-width: 500px;
-            backdrop-filter: blur(15px);
             background: rgba(255, 255, 255, 0.05);
             padding: 10px;
             border-radius: 40px;
+            backdrop-filter: blur(15px);
         }
 
         .email-box input {
             flex: 1;
-            padding: 15px 25px;
             background: transparent;
             border: none;
-            color: #fff;
-            font-size: 16px;
+            color: white;
+            padding: 0 15px;
             outline: none;
-        }
-
-        .email-box input::placeholder {
-            color: #cbd5e1;
         }
 
         .email-box button {
             background: var(--primary);
-            color: #000;
             border: none;
             padding: 15px 30px;
-            font-size: 16px;
-            font-weight: 600;
             border-radius: 30px;
+            font-weight: 600;
             cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .email-box button:hover {
-            background: var(--primary-hover);
-        }
-
-        .error {
-            color: #ff4d4d;
-            margin-top: 10px;
-            font-size: 14px;
-            margin-left: 15px;
         }
 
         .section {
@@ -235,15 +238,9 @@ $result = mysqli_query($conn, $query);
         .section h2 {
             font-size: 2rem;
             margin-bottom: 30px;
-            font-weight: 600;
         }
 
-        .trending-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
+        /* Slider */
         .trending {
             display: flex;
             gap: 20px;
@@ -258,47 +255,16 @@ $result = mysqli_query($conn, $query);
             object-fit: cover;
             border-radius: 12px;
             cursor: pointer;
-            transition: all 0.4s ease;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            transition: 0.4s;
             flex-shrink: 0;
         }
 
         .trending img:hover {
             transform: translateY(-10px) scale(1.05);
-            box-shadow: 0 15px 25px rgba(0, 229, 255, 0.2);
             border: 2px solid var(--primary);
         }
 
-        .arrow-btn {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(5px);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            font-size: 20px;
-            cursor: pointer;
-            z-index: 10;
-            transition: 0.3s;
-        }
-
-        .arrow-btn:hover {
-            background: var(--primary);
-            color: #000;
-        }
-
-        .arrow-btn.left {
-            left: -20px;
-        }
-
-        .arrow-btn.right {
-            right: -20px;
-        }
-
+        /* Cards */
         .cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -307,33 +273,35 @@ $result = mysqli_query($conn, $query);
 
         .card {
             background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
             padding: 30px;
             border-radius: 20px;
-            position: relative;
-            transition: 0.3s;
-            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateY(-5px);
+        .email-box-wrapper {
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .error-text {
+            display: block;
+            color: #ff4d4f;
+            font-size: 14px;
+            margin-top: 8px;
+            padding-left: 15px;
+        }
+
+        .input-error {
+            border: 1px solid #ff4d4f !important;
         }
 
         .card h3 {
-            font-size: 20px;
-            margin-bottom: 15px;
             color: var(--primary);
+            margin-bottom: 15px;
         }
 
-        .card p {
-            font-size: 15px;
-            color: var(--text-muted);
-            line-height: 1.6;
-        }
-
+        /* FAQ */
         .faq-item {
-            background: transparent;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             padding: 25px 0;
             cursor: pointer;
@@ -343,65 +311,16 @@ $result = mysqli_query($conn, $query);
             display: flex;
             justify-content: space-between;
             font-size: 18px;
-            font-weight: 400;
-        }
-
-        .faq-icon {
-            font-size: 24px;
-            color: var(--primary);
-            transition: 0.3s;
-        }
-
-        .faq-item.active .faq-icon {
-            transform: rotate(45deg);
         }
 
         .faq-answer {
             display: none;
             margin-top: 15px;
-            font-size: 15px;
             color: var(--text-muted);
             line-height: 1.6;
         }
 
-        .footer {
-            padding: 60px 5%;
-            background: #070b13;
-            color: var(--text-muted);
-        }
-
-        .footer-top {
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr;
-            gap: 30px;
-        }
-
-        .footer h2,
-        .footer h4 {
-            color: #fff;
-            margin-bottom: 18px;
-        }
-
-        .footer a {
-            display: block;
-            color: var(--text-muted);
-            text-decoration: none;
-            margin-bottom: 10px;
-            transition: 0.3s;
-        }
-
-        .footer a:hover {
-            color: var(--primary);
-        }
-
-        .footer-bottom {
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            margin-top: 30px;
-            padding-top: 20px;
-            text-align: center;
-            font-size: 14px;
-        }
-
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -411,7 +330,6 @@ $result = mysqli_query($conn, $query);
             justify-content: center;
             align-items: center;
             backdrop-filter: blur(5px);
-            padding: 20px;
         }
 
         .modal-content {
@@ -437,68 +355,6 @@ $result = mysqli_query($conn, $query);
         .modal-right {
             width: 60%;
             padding: 40px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .modal-right h1 {
-            font-size: 28px;
-            margin-bottom: 15px;
-        }
-
-        .modal-right .tags {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-
-        .modal-right .tags span {
-            background: rgba(255, 255, 255, 0.08);
-            padding: 8px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
-        .modal-right p {
-            color: var(--text-muted);
-            line-height: 1.7;
-            font-size: 15px;
-        }
-
-        .btn-modal {
-            display: inline-block;
-            padding: 12px 24px;
-            background: var(--primary);
-            color: #000;
-            font-weight: 600;
-            border-radius: 25px;
-            text-decoration: none;
-            transition: 0.3s;
-            border: none;
-            cursor: pointer;
-        }
-
-        .btn-modal:hover {
-            background: var(--primary-hover);
-        }
-
-        button.btn-modal {
-            border: none;
-            cursor: pointer;
-            font: inherit;
-        }
-
-        #trailerBtn {
-            background: #111827;
-            color: #fff;
-            border: 1px solid #38bdf8;
-        }
-
-        #trailerBtn:hover {
-            background: #0f172a;
         }
 
         .close {
@@ -506,9 +362,87 @@ $result = mysqli_query($conn, $query);
             top: 15px;
             right: 18px;
             font-size: 30px;
-            color: #fff;
             cursor: pointer;
-            z-index: 1001;
+            color: #fff;
+        }
+
+        .offers-strip-section {
+            padding: 22px 5% 10px;
+            background: linear-gradient(180deg, rgba(2, 6, 23, 0.96), rgba(11, 15, 25, 0.92));
+        }
+
+        .offers-strip {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .offer-pill {
+            min-height: 42px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
+            font-size: 12px;
+            line-height: 1.2;
+            backdrop-filter: blur(8px);
+            transition: 0.25s ease;
+        }
+
+        .offer-pill:hover {
+            transform: translateY(-2px);
+            border-color: rgba(0, 229, 255, 0.45);
+            box-shadow: 0 10px 20px rgba(0, 229, 255, 0.08);
+        }
+
+        .offer-pill-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .offer-pill strong {
+            color: #ffffff;
+            font-size: 12px;
+        }
+
+        .offer-pill a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .offer-pill a:hover {
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .offers-strip-section {
+                padding: 16px 4% 6px;
+            }
+
+            .offers-strip {
+                gap: 8px;
+            }
+
+            .offer-pill {
+                width: 100%;
+                justify-content: flex-start;
+            }
         }
 
         @media (max-width: 900px) {
@@ -516,109 +450,108 @@ $result = mysqli_query($conn, $query);
                 gap: 10px;
             }
 
-            .search-input {
-                width: 150px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 15px;
-                align-items: flex-start;
-            }
-
-            .right-section {
-                width: 100%;
-                justify-content: flex-start;
-                flex-wrap: wrap;
-            }
-
-            .hero {
-                text-align: center;
-                background: linear-gradient(0deg, #0b0f19 20%, rgba(11, 15, 25, 0.7) 100%), url("https://image.tmdb.org/t/p/original/rMZonJhnHk0uPqQW524qA7tYmIQ.jpg") center/cover;
-            }
-
-            .hero-content {
-                margin: auto;
-            }
-
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-
-            .email-box {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .email-box input,
-            .email-box button {
-                width: 100%;
-            }
-
-            .modal-content {
-                flex-direction: column;
-            }
-
-            .modal-left,
-            .modal-right {
-                width: 100%;
-            }
-
-            .modal-left img {
-                height: 250px;
-            }
-
-            .arrow-btn {
-                display: none;
-            }
-
             .footer-top {
-                grid-template-columns: 1fr;
+                display: grid;
+                grid-template-columns: 2fr 1fr 1fr 1fr;
+                gap: 30px;
             }
 
-            .search-form {
-                width: 100%;
+            .footer a {
+                display: block;
+                color: var(--text-muted);
+                text-decoration: none;
+                margin-bottom: 10px;
             }
 
-            .search-input {
-                width: 100%;
+            .footer a:hover {
+                color: var(--primary);
+            }
+
+            @media (max-width: 768px) {
+                .header {
+                    flex-direction: column;
+                    gap: 15px;
+                    align-items: flex-start;
+                }
+
+                .right-section {
+                    width: 100%;
+                    justify-content: flex-start;
+                    flex-wrap: wrap;
+                }
+
+                .hero {
+                    text-align: center;
+                    background:
+                        linear-gradient(0deg, #0b0f19 20%, rgba(11, 15, 25, 0.7) 100%),
+                        url("<?php echo htmlspecialchars($hero_image); ?>") center/cover;
+                }
+
+                .hero-content {
+                    margin: auto;
+                }
+
+                .hero h1 {
+                    font-size: 2.5rem;
+                }
+
+                .email-box {
+                    flex-direction: column;
+                    align-items: center;
+                }
+
+                .email-box input,
+                .email-box button {
+                    width: 100%;
+                }
+
+                .modal-content {
+                    flex-direction: column;
+                }
+
+                .modal-left,
+                .modal-right {
+                    width: 100%;
+                }
+
+                .hero h1 {
+                    font-size: 2.5rem;
+                }
             }
         }
     </style>
 </head>
 
+
+
 <body>
 
     <header class="header">
         <div class="logo">WATCHWISE</div>
-
         <div class="right-section">
             <form action="search.php" method="GET" class="search-form">
                 <input type="text" name="query" placeholder="Search movies..." class="search-input" required>
                 <button type="submit" class="search-btn">Search</button>
             </form>
-
-
             <a href="Signup.php" class="signin-btn">Sign In</a>
         </div>
     </header>
 
     <section class="hero">
         <div class="hero-content">
-            <h1 data-key="title">Dive into endless entertainment.</h1>
-            <h2 data-key="subtitle">Premium movies & shows. Starts at ₹149.</h2>
+            <h1><?php echo htmlspecialchars($hero_title); ?></h1>
+            <h2><?php echo htmlspecialchars($hero_subtitle); ?></h2>
 
             <form action="step2.php" method="POST" class="email-form" onsubmit="return validateHeroEmail()">
                 <div class="email-box">
                     <input type="email" id="heroEmail" name="email" placeholder="Enter your email address">
                     <button type="submit">Get Started</button>
                 </div>
-                <div class="error" id="errorTop"></div>
             </form>
         </div>
     </section>
+
+
 
     <section class="section">
         <h2>Trending Now</h2>
@@ -627,14 +560,14 @@ $result = mysqli_query($conn, $query);
 
             <div class="trending" id="trendingSection">
                 <?php
-                if ($result && mysqli_num_rows($result) > 0) {
-                    while ($row = mysqli_fetch_assoc($result)) {
-                        echo '<img src="' . htmlspecialchars($row['image_url']) . '" 
-                           data-title="' . htmlspecialchars($row['title']) . '" 
-                           data-desc="' . htmlspecialchars($row['description']) . '" 
-                           data-year="' . htmlspecialchars($row['release_year']) . '" 
-                           data-rating="' . htmlspecialchars($row['rating']) . '" 
-                           data-trailer="' . htmlspecialchars($row['trailer_url'] ?? '') . '" 
+                if ($trending_result && mysqli_num_rows($trending_result) > 0) {
+                    while ($row = mysqli_fetch_assoc($trending_result)) {
+                        echo '<img src="' . htmlspecialchars($row['image_url']) . '"
+                           data-title="' . htmlspecialchars($row['title']) . '"
+                           data-desc="' . htmlspecialchars($row['description']) . '"
+                           data-year="' . htmlspecialchars($row['release_year']) . '"
+                           data-rating="' . htmlspecialchars($row['rating']) . '"
+                           data-trailer="' . htmlspecialchars($row['trailer_url'] ?? '') . '"
                            onclick="openModal(this)">';
                     }
                 } else {
@@ -648,116 +581,97 @@ $result = mysqli_query($conn, $query);
     </section>
 
     <section class="section">
-        <h2>Why choose Watchwise?</h2>
+        <h2><?php echo htmlspecialchars($why_choose_title); ?></h2>
         <div class="cards">
-            <div class="card">
-                <h3>Seamless TV Experience</h3>
-                <p>Watch on smart TVs, PlayStation, Xbox, Apple TV, Chromecast and more.</p>
-            </div>
-            <div class="card">
-                <h3>Download & Go</h3>
-                <p>Save your favourite movies and shows to watch later anytime, even offline.</p>
-            </div>
-            <div class="card">
-                <h3>Watch Everywhere</h3>
-                <p>Enjoy on phone, tablet, laptop and TV with one premium account.</p>
-            </div>
-            <div class="card">
-                <h3>Kids Safe Profiles</h3>
-                <p>Create a safe and fun space for kids with family-friendly entertainment.</p>
-            </div>
+            <?php if ($features_result && mysqli_num_rows($features_result) > 0): ?>
+                <?php while ($feature = mysqli_fetch_assoc($features_result)): ?>
+                    <div class="card">
+                        <h3><?php echo htmlspecialchars($feature['title']); ?></h3>
+                        <p><?php echo htmlspecialchars($feature['description']); ?></p>
+                    </div>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <div class="card">
+                    <h3>Seamless TV Experience</h3>
+                    <p>Watch on smart TVs, PlayStation, Xbox, Apple TV, Chromecast and more.</p>
+                </div>
+                <div class="card">
+                    <h3>Download & Go</h3>
+                    <p>Save your favourite movies and shows to watch later anytime, even offline.</p>
+                </div>
+                <div class="card">
+                    <h3>Watch Everywhere</h3>
+                    <p>Enjoy on phone, tablet, laptop and TV with one premium account.</p>
+                </div>
+                <div class="card">
+                    <h3>Kids Safe Profiles</h3>
+                    <p>Create a safe and fun space for kids with family-friendly entertainment.</p>
+                </div>
+            <?php endif; ?>
         </div>
     </section>
 
     <section class="section">
-        <h2>Got Questions?</h2>
+        <h2><?php echo htmlspecialchars($faq_title); ?></h2>
 
-        <div class="faq-item" onclick="toggleFaq(this)">
-            <div class="faq-title">
-                What is Watchwise?
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">
-                Watchwise is a premium streaming platform where users can discover and enjoy movies, shows and trailers.
-            </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-            <div class="faq-title">
-                How much does Watchwise cost?
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">
-                Plans start at ₹149 and go up depending on quality and screens.
-            </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-            <div class="faq-title">
-                Can I watch trailers before subscribing?
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">
-                Yes. In the trending section you can open a movie card and watch its trailer inside the website.
-            </div>
-        </div>
-
-        <div style="margin-top: 50px; text-align: center;">
-            <p style="margin-bottom: 20px; color: var(--text-muted);">Ready to start watching? Enter your email to create an account.</p>
-
-            <form action="step2.php" method="POST" class="email-form" onsubmit="return validateBottomEmail()">
-                <div class="email-box" style="margin: auto;">
-                    <input type="email" id="emailBottom" name="email" placeholder="Enter your email address">
-                    <button type="submit">Get Started</button>
+        <?php if ($faqs_result && mysqli_num_rows($faqs_result) > 0): ?>
+            <?php while ($faq = mysqli_fetch_assoc($faqs_result)): ?>
+                <div class="faq-item" onclick="toggleFaq(this)">
+                    <div class="faq-title">
+                        <?php echo htmlspecialchars($faq['question']); ?>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <?php echo htmlspecialchars($faq['answer']); ?>
+                    </div>
                 </div>
-                <div class="error" id="errorBottom"></div>
-            </form>
-        </div>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-title">
+                    What is Watchwise?
+                    <span class="faq-icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    Watchwise is a premium streaming platform where users can discover and enjoy movies, shows and trailers.
+                </div>
+            </div>
+        <?php endif; ?>
+
     </section>
 
     <footer class="footer">
         <div class="footer-top">
             <div>
                 <h2>WATCHWISE</h2>
-                <p>Watchwise is your modern movie discovery platform with premium plans, trailers and trending entertainment in one place.</p>
+                <p><?php echo htmlspecialchars($footer_about); ?></p>
             </div>
 
-            <div>
-                <h4>Company</h4>
-                <a href="#">About Us</a>
-                <a href="#">Careers</a>
-                <a href="#">Press</a>
-                <a href="#">Investors</a>
-            </div>
-
-            <div>
-                <h4>Support</h4>
-                <a href="#">Help Centre</a>
-                <a href="#">FAQ</a>
-                <a href="#">Account</a>
-                <a href="#">Contact Us</a>
-            </div>
-
-            <div>
-                <h4>Legal</h4>
-                <a href="#">Terms of Use</a>
-                <a href="#">Privacy Policy</a>
-                <a href="#">Cookie Policy</a>
-                <a href="#">Corporate Information</a>
-            </div>
+            <?php foreach ($footer_sections as $section_name => $links): ?>
+                <div>
+                    <h4><?php echo htmlspecialchars($section_name); ?></h4>
+                    <?php if (!empty($links)): ?>
+                        <?php foreach ($links as $link): ?>
+                            <a href="<?php echo htmlspecialchars($link['url']); ?>">
+                                <?php echo htmlspecialchars($link['label']); ?>
+                            </a>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <a href="#">No links</a>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
         </div>
 
         <div class="footer-bottom">
-            <p>© 2026 Watchwise India. All Rights Reserved.</p>
+            <p>© <?php echo date("Y"); ?> Watchwise India. All Rights Reserved.</p>
         </div>
     </footer>
 
     <div id="movieModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
-            <div class="modal-left">
-                <img id="modalImg" src="" alt="Movie Poster">
-            </div>
+            <div class="modal-left"><img id="modalImg" src=""></div>
             <div class="modal-right">
                 <h1 id="modalTitle">Title</h1>
                 <div class="tags">
@@ -768,100 +682,26 @@ $result = mysqli_query($conn, $query);
                 <p id="modalDesc">Description goes here.</p>
 
                 <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:20px;">
-                    <a href="step2.php" class="btn-modal">Watch Movie</a>
+                    <a href="Signup.php" class="btn-modal">Watch Movie</a>
                     <button type="button" class="btn-modal" id="trailerBtn" onclick="openTrailerModal()">Watch Trailer</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="trailerModal" class="modal">
-        <div class="modal-content" style="max-width: 900px; width: 95%; padding: 0; background: #000; overflow: hidden;">
-            <span class="close" onclick="closeTrailerModal()" style="position:absolute; top:10px; right:16px; z-index:10;">&times;</span>
-            <iframe id="trailerFrame" width="100%" height="500" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-        </div>
-    </div>
-
     <script>
-        let currentTrailer = "";
-
-        function scrollTrending(amount) {
-            document.getElementById("trendingSection").scrollBy({
-                left: amount,
-                behavior: "smooth"
-            });
-        }
-
         function toggleFaq(el) {
-            el.classList.toggle("active");
-            let ans = el.querySelector(".faq-answer");
-            let icon = el.querySelector(".faq-icon");
-
-            if (ans.style.display === "block") {
-                ans.style.display = "none";
-                icon.innerHTML = "+";
-            } else {
-                ans.style.display = "block";
-                icon.innerHTML = "&times;";
-            }
-        }
-
-        function validateHeroEmail() {
-            let email = document.getElementById("heroEmail").value.trim();
-            let error = document.getElementById("errorTop");
-            let regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-            if (email === "") {
-                error.innerHTML = "Email is required!";
-                return false;
-            }
-            if (!regex.test(email)) {
-                error.innerHTML = "Enter a valid email!";
-                return false;
-            }
-
-            error.innerHTML = "";
-            return true;
-        }
-
-        function validateBottomEmail() {
-            let email = document.getElementById("emailBottom").value.trim();
-            let error = document.getElementById("errorBottom");
-            let regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-            if (email === "") {
-                error.innerHTML = "Email is required!";
-                return false;
-            }
-            if (!regex.test(email)) {
-                error.innerHTML = "Enter a valid email!";
-                return false;
-            }
-
-            error.innerHTML = "";
-            return true;
+            const ans = el.querySelector(".faq-answer");
+            const icon = el.querySelector(".faq-icon");
+            const isOpen = ans.style.display === "block";
+            ans.style.display = isOpen ? "none" : "block";
+            icon.innerHTML = isOpen ? "+" : "&times;";
         }
 
         function openModal(el) {
-            document.getElementById("modalImg").src = el.getAttribute("src");
-            document.getElementById("modalTitle").innerText = el.getAttribute("data-title");
-            document.getElementById("modalDesc").innerText = el.getAttribute("data-desc");
-            document.getElementById("modalYear").innerText = el.getAttribute("data-year") || "2026";
-            document.getElementById("modalRating").innerText = el.getAttribute("data-rating") || "Premium";
-
-            currentTrailer = el.getAttribute("data-trailer") || "";
-
-            const trailerBtn = document.getElementById("trailerBtn");
-            if (!currentTrailer) {
-                trailerBtn.disabled = true;
-                trailerBtn.style.opacity = "0.6";
-                trailerBtn.innerText = "Trailer Not Available";
-            } else {
-                trailerBtn.disabled = false;
-                trailerBtn.style.opacity = "1";
-                trailerBtn.innerText = "Watch Trailer";
-            }
-
+            document.getElementById("modalImg").src = el.src;
+            document.getElementById("modalTitle").innerText = el.dataset.title;
+            document.getElementById("modalDesc").innerText = el.dataset.desc;
             document.getElementById("movieModal").style.display = "flex";
         }
 
@@ -869,33 +709,37 @@ $result = mysqli_query($conn, $query);
             document.getElementById("movieModal").style.display = "none";
         }
 
-        function openTrailerModal() {
-            if (!currentTrailer) return;
-
-            let finalUrl = currentTrailer.includes("?") ?
-                currentTrailer + "&autoplay=1" :
-                currentTrailer + "?autoplay=1";
-
-            document.getElementById("trailerFrame").src = finalUrl;
-            document.getElementById("trailerModal").style.display = "flex";
-        }
-
-        function closeTrailerModal() {
-            document.getElementById("trailerFrame").src = "";
-            document.getElementById("trailerModal").style.display = "none";
-        }
-
-        window.onclick = function(event) {
-            const movieModal = document.getElementById("movieModal");
-            const trailerModal = document.getElementById("trailerModal");
-
-            if (event.target === movieModal) {
-                closeModal();
-            }
-            if (event.target === trailerModal) {
-                closeTrailerModal();
-            }
+        window.onclick = (e) => {
+            if (e.target.className === 'modal') closeModal();
         };
+
+        // Custom Get Started Email Validation
+        const getStartedForm = document.getElementById("getStartedForm");
+        const heroEmail = document.getElementById("heroEmail");
+        const heroEmailError = document.getElementById("heroEmailError");
+
+        getStartedForm.addEventListener("submit", function(e) {
+            const emailValue = heroEmail.value.trim();
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            heroEmailError.innerText = "";
+            heroEmail.classList.remove("input-error");
+
+            if (emailValue === "") {
+                e.preventDefault();
+                heroEmailError.innerText = "Please enter your email.";
+                heroEmail.classList.add("input-error");
+            } else if (!emailPattern.test(emailValue)) {
+                e.preventDefault();
+                heroEmailError.innerText = "Invalid email format.";
+                heroEmail.classList.add("input-error");
+            }
+        });
+
+        heroEmail.addEventListener("input", function() {
+            heroEmailError.innerText = "";
+            heroEmail.classList.remove("input-error");
+        });
     </script>
 </body>
 

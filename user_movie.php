@@ -1,5 +1,6 @@
 <?php
 include "db.php";
+session_start();
 
 function getMoviesByCategory($conn, $category)
 {
@@ -26,6 +27,37 @@ $heroImgs = getMoviesByCategory($conn, 'hero');
 $moviesList = getMoviesByCategory($conn, 'movies');
 $dramasList = getMoviesByCategory($conn, 'dramas');
 $cartoonsList = getMoviesByCategory($conn, 'cartoons');
+
+/* ================= USER PROFILE DATA ================= */
+$userId = $_SESSION['user_id'] ?? 1;
+
+$userName = 'Watchwise User';
+$userEmail = '';
+$currentPlan = 'No Plan';
+$paymentStatus = 'Pending';
+$couponCode = 'Not Used';
+$finalAmount = '0';
+
+$userQuery = mysqli_query($conn, "SELECT * FROM users WHERE id = '" . mysqli_real_escape_string($conn, (string)$userId) . "' LIMIT 1");
+if ($userQuery && mysqli_num_rows($userQuery) > 0) {
+    $user = mysqli_fetch_assoc($userQuery);
+
+    $userName = $user['name'] ?? 'Watchwise User';
+    $userEmail = $user['email'] ?? '';
+    $currentPlan = $user['plan'] ?? 'No Plan';
+    $paymentStatus = $user['payment_status'] ?? 'Pending';
+
+    if (!empty($userEmail)) {
+        $safeEmail = mysqli_real_escape_string($conn, $userEmail);
+        $paymentQuery = mysqli_query($conn, "SELECT * FROM payments WHERE email = '$safeEmail' ORDER BY id DESC LIMIT 1");
+
+        if ($paymentQuery && mysqli_num_rows($paymentQuery) > 0) {
+            $payment = mysqli_fetch_assoc($paymentQuery);
+            $couponCode = !empty($payment['coupon_code']) ? $payment['coupon_code'] : 'Not Used';
+            $finalAmount = $payment['final_amount'] ?? '0';
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,17 +65,20 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WatchWise - Blue & Black Theme</title>
+    <title>WatchWise - User Dashboard</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
         :root {
-            --primary-blue: #0088ff;
-            --bg-dark: #000000;
-            --text-white: #f0f4f8;
+            --primary-blue: #0ea5e9;
+            --primary-hover: #0284c7;
+            --bg-dark: #020617;
+            --bg-mid: #06152d;
+            --text-white: #f8fafc;
+            --text-muted: #94a3b8;
             --card-width: 180px;
             --card-height: 270px;
-            --surface-dark: #0a0e14;
+            --surface-dark: #0f172a;
         }
 
         * {
@@ -51,6 +86,7 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             padding: 0;
             box-sizing: border-box;
             scrollbar-width: none;
+            font-family: 'Poppins', sans-serif;
         }
 
         *::-webkit-scrollbar {
@@ -58,54 +94,58 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         }
 
         body {
-            font-family: 'Roboto', sans-serif;
-            background-color: var(--bg-dark);
+            background:
+                radial-gradient(circle at top right, rgba(14, 165, 233, 0.10), transparent 25%),
+                radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 22%),
+                linear-gradient(180deg, #020617 0%, #06152d 45%, #020617 100%);
             color: var(--text-white);
             overflow-x: hidden;
         }
 
-        /* NAVBAR */
         .navbar {
             position: fixed;
             top: 0;
             width: 100%;
-            padding: 20px 4%;
+            padding: 18px 4%;
             display: flex;
             justify-content: space-between;
             align-items: center;
             z-index: 1000;
-            transition: background-color 0.5s ease;
-            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0));
+            transition: background-color 0.4s ease;
+            background: rgba(2, 6, 23, 0.72);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .navbar.black-nav {
-            background-color: #000000;
+            background: rgba(2, 6, 23, 0.95);
         }
 
         .nav-left {
             display: flex;
             align-items: center;
-            gap: 40px;
+            gap: 38px;
         }
 
         .logo {
             color: var(--primary-blue);
-            font-size: 28px;
+            font-size: 2.2rem;
             font-weight: 800;
             text-transform: uppercase;
-            cursor: pointer;
-            text-shadow: 0px 0px 10px rgba(0, 136, 255, 0.4);
+            letter-spacing: 1px;
+            text-decoration: none;
+            text-shadow: 0 4px 20px rgba(14, 165, 233, 0.25);
         }
 
         .nav-links {
             display: flex;
             list-style: none;
-            gap: 20px;
+            gap: 22px;
         }
 
         .nav-links a {
             text-decoration: none;
-            color: #b0c4de;
+            color: #cbd5e1;
             font-size: 14px;
             transition: color 0.3s;
         }
@@ -117,18 +157,18 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         .nav-right {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 18px;
         }
 
-        /* SEARCH BAR */
         .search-box {
             display: flex;
             align-items: center;
-            background: rgba(10, 14, 20, 0.75);
-            border: 1px solid rgba(0, 136, 255, 0.3);
-            padding: 5px 10px;
-            border-radius: 4px;
-            backdrop-filter: blur(2px);
+            background: rgba(15, 23, 42, 0.80);
+            border: 1px solid rgba(14, 165, 233, 0.28);
+            padding: 8px 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+            min-width: 270px;
         }
 
         .search-box input {
@@ -137,19 +177,173 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             color: #fff;
             padding: 5px;
             outline: none;
-            width: 220px;
+            width: 100%;
             font-size: 14px;
         }
 
-        .profile-icon {
-            width: 35px;
-            height: 35px;
-            border-radius: 4px;
-            cursor: pointer;
-            object-fit: cover;
+        .search-box input::placeholder {
+            color: #94a3b8;
         }
 
-        /* HERO SECTION */
+        .profile-wrap {
+            position: relative;
+        }
+
+        .profile-trigger {
+            width: 38px;
+            height: 38px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid rgba(14, 165, 233, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        .profile-trigger svg {
+            width: 20px;
+            height: 20px;
+            fill: #ffffff;
+        }
+
+        .profile-menu {
+            position: absolute;
+            right: 0;
+            top: 52px;
+            width: 320px;
+            background: rgba(15, 23, 42, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 18px;
+            display: none;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+            z-index: 1500;
+        }
+
+        .profile-menu.show {
+            display: block;
+        }
+
+        .profile-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .profile-avatar-box {
+            width: 52px;
+            height: 52px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid rgba(14, 165, 233, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .profile-avatar-box svg {
+            width: 26px;
+            height: 26px;
+            fill: #ffffff;
+        }
+
+        .profile-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .profile-email {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 3px;
+            word-break: break-word;
+        }
+
+        .profile-section-title {
+            font-size: 11px;
+            color: var(--primary-blue);
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin: 15px 0 10px;
+        }
+
+        .profile-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 9px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .profile-row:last-child {
+            border-bottom: none;
+        }
+
+        .profile-label {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .profile-value {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: right;
+            word-break: break-word;
+        }
+
+        .profile-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .plan-badge {
+            background: rgba(14, 165, 233, 0.16);
+            color: #7dd3fc;
+        }
+
+        .status-badge {
+            background: rgba(34, 197, 94, 0.16);
+            color: #4ade80;
+        }
+
+        .profile-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .profile-actions a {
+            text-decoration: none;
+            text-align: center;
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .manage-btn {
+            background: linear-gradient(135deg, var(--primary-blue), #2563eb);
+            color: #fff;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
         .hero {
             height: 90vh;
             background-size: cover;
@@ -165,7 +359,8 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(to right, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0) 100%);
+            background:
+                linear-gradient(to right, rgba(2, 6, 23, 0.95) 0%, rgba(2, 6, 23, 0.55) 48%, rgba(2, 6, 23, 0.12) 100%);
         }
 
         .hero::after {
@@ -175,7 +370,7 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             left: 0;
             width: 100%;
             height: 10rem;
-            background-image: linear-gradient(180deg, transparent, #000000);
+            background-image: linear-gradient(180deg, transparent, #020617);
         }
 
         .hero-content {
@@ -193,9 +388,9 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         }
 
         .hero-desc {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             font-weight: 400;
-            line-height: 1.5;
+            line-height: 1.6;
             margin-bottom: 25px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
             color: #d0dbe6;
@@ -207,8 +402,8 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         }
 
         .btn {
-            padding: 0.6rem 1.8rem;
-            border-radius: 4px;
+            padding: 0.7rem 1.8rem;
+            border-radius: 8px;
             border: none;
             font-size: 1rem;
             font-weight: 600;
@@ -222,24 +417,23 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         .btn-play {
             background-color: var(--primary-blue);
             color: #fff;
-            box-shadow: 0 4px 15px rgba(0, 136, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.28);
         }
 
         .btn-play:hover {
-            background-color: #006bce;
+            background-color: var(--primary-hover);
         }
 
         .btn-more {
-            background-color: rgba(30, 40, 56, 0.8);
+            background-color: rgba(30, 41, 59, 0.72);
             color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.10);
         }
 
         .btn-more:hover {
-            background-color: rgba(30, 40, 56, 0.5);
+            background-color: rgba(30, 41, 59, 0.5);
         }
 
-        /* ROWS & CARDS */
         .row-section {
             padding: 10px 4%;
             position: relative;
@@ -272,7 +466,7 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         .movie-card {
             min-width: var(--card-width);
             height: var(--card-height);
-            border-radius: 4px;
+            border-radius: 8px;
             overflow: hidden;
             cursor: pointer;
             transition: transform 0.3s ease, opacity 0.3s ease;
@@ -288,9 +482,9 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         }
 
         .movie-card:hover {
-            transform: scale(1.1);
+            transform: scale(1.08);
             z-index: 100;
-            box-shadow: 0 0 20px rgba(0, 136, 255, 0.4);
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.35);
             border: 2px solid var(--primary-blue);
         }
 
@@ -298,7 +492,6 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             opacity: 0.3;
         }
 
-        /* SCROLL BUTTONS */
         .handle {
             position: absolute;
             background: rgba(0, 0, 0, 0.6);
@@ -334,7 +527,6 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             border-bottom-left-radius: 4px;
         }
 
-        /* MODAL */
         #movieModal {
             display: none;
             position: fixed;
@@ -359,7 +551,7 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             max-width: 600px;
             border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0, 136, 255, 0.15);
+            box-shadow: 0 10px 40px rgba(14, 165, 233, 0.15);
             position: relative;
             margin: 40px auto;
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -417,7 +609,6 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* REVIEW SECTION STYLES */
         .review-section {
             margin-top: 20px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -452,14 +643,13 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             resize: vertical;
             min-height: 60px;
             margin-bottom: 10px;
-            font-family: inherit;
             font-size: 0.9rem;
         }
 
         .review-input:focus {
             outline: none;
             border-color: var(--primary-blue);
-            box-shadow: 0 0 5px rgba(0, 136, 255, 0.3);
+            box-shadow: 0 0 5px rgba(14, 165, 233, 0.3);
         }
 
         .user-reviews-list {
@@ -494,12 +684,20 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
                 --card-height: 180px;
             }
 
+            .logo {
+                font-size: 1.9rem;
+            }
+
             .hero-title {
                 font-size: 2.5rem;
             }
 
             .nav-links {
                 display: none;
+            }
+
+            .search-box {
+                min-width: 210px;
             }
 
             .search-box input {
@@ -513,6 +711,10 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             .modal-content {
                 padding: 15px 20px 20px;
             }
+
+            .profile-menu {
+                width: 280px;
+            }
         }
     </style>
 </head>
@@ -521,25 +723,74 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
 
     <div class="navbar" id="navbar">
         <div class="nav-left">
-            <div class="logo">WatchWise</div>
+            <a href="user_movie.php" class="logo">WATCHWISE</a>
             <ul class="nav-links">
                 <li><a href="#hero">Home</a></li>
                 <li><a href="#myListSection">My List</a></li>
-                <li><a href="#movies">Movies</a></li>
-                <li><a href="#dramas">TV Shows</a></li>
-                <li><a href="#cartoons">Kids & Anime</a></li>
+                <li><a href="#moviesSection">Movies</a></li>
+                <li><a href="#dramasSection">TV Shows</a></li>
+                <li><a href="#cartoonsSection">Kids & Anime</a></li>
             </ul>
         </div>
+
         <div class="nav-right">
             <div class="search-box">
                 <span style="color: white; margin-right: 5px;">🔍</span>
                 <input type="text" placeholder="Search title or mood..." onkeyup="searchMovie(this.value)">
             </div>
-            <a href="profile.php">
-                <img src="<?php
-                            echo $profile['image'] ?? 'img/image.png';
-                            ?>" class="profile-icon">
-            </a>
+
+            <div class="profile-wrap">
+                <div class="profile-trigger" onclick="toggleProfile()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 12c2.761 0 5-2.686 5-6s-2.239-6-5-6-5 2.686-5 6 2.239 6 5 6zm0 2c-4.418 0-8 2.686-8 6v2h16v-2c0-3.314-3.582-6-8-6z" />
+                    </svg>
+                </div>
+
+                <div class="profile-menu" id="profileMenu">
+                    <div class="profile-top">
+                        <div class="profile-avatar-box">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 12c2.761 0 5-2.686 5-6s-2.239-6-5-6-5 2.686-5 6 2.239 6 5 6zm0 2c-4.418 0-8 2.686-8 6v2h16v-2c0-3.314-3.582-6-8-6z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="profile-name"><?php echo htmlspecialchars($userName); ?></div>
+                            <div class="profile-email"><?php echo htmlspecialchars($userEmail); ?></div>
+                        </div>
+                    </div>
+
+                    <div class="profile-section-title">Subscription Details</div>
+
+                    <div class="profile-row">
+                        <div class="profile-label">Current Plan</div>
+                        <div class="profile-value">
+                            <span class="profile-badge plan-badge"><?php echo htmlspecialchars($currentPlan); ?></span>
+                        </div>
+                    </div>
+
+                    <div class="profile-row">
+                        <div class="profile-label">Payment Status</div>
+                        <div class="profile-value">
+                            <span class="profile-badge status-badge"><?php echo htmlspecialchars($paymentStatus); ?></span>
+                        </div>
+                    </div>
+
+                    <div class="profile-row">
+                        <div class="profile-label">Coupon Used</div>
+                        <div class="profile-value"><?php echo htmlspecialchars($couponCode); ?></div>
+                    </div>
+
+                    <div class="profile-row">
+                        <div class="profile-label">Final Paid Amount</div>
+                        <div class="profile-value">₹<?php echo htmlspecialchars((string)$finalAmount); ?></div>
+                    </div>
+
+                    <div class="profile-actions">
+                        <a href="manage_subscription.php" class="manage-btn">Manage Subscription</a>
+                        <a href="index.php" class="logout-btn">Logout</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -563,7 +814,7 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         </div>
     </div>
 
-    <div class="row-section" style="margin-top: -60px;">
+    <div class="row-section" id="moviesSection" style="margin-top: -60px;">
         <h2 class="row-title">Trending Movies</h2>
         <div class="row-container">
             <button class="handle left-handle" onclick="scrollRow('movies', -300)">❮</button>
@@ -572,7 +823,7 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         </div>
     </div>
 
-    <div class="row-section">
+    <div class="row-section" id="dramasSection">
         <h2 class="row-title">Popular TV Dramas</h2>
         <div class="row-container">
             <button class="handle left-handle" onclick="scrollRow('dramas', -300)">❮</button>
@@ -581,7 +832,7 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         </div>
     </div>
 
-    <div class="row-section">
+    <div class="row-section" id="cartoonsSection">
         <h2 class="row-title">Kids & Anime</h2>
         <div class="row-container">
             <button class="handle left-handle" onclick="scrollRow('cartoons', -300)">❮</button>
@@ -594,21 +845,20 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         <div class="modal-box">
             <span class="close" onclick="closeModal()">✕</span>
             <div class="modal-img-container">
-                <img id="modalImg" src="">
+                <img id="modalImg" src="" alt="Movie Image">
             </div>
             <div class="modal-content">
                 <h2 id="modalTitle" style="font-size: 1.8rem; margin-bottom: 8px; font-weight: 800;">Title</h2>
-                <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center; font-size: 12px;">
+                <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center; font-size: 12px; flex-wrap: wrap;">
                     <span id="modalRating" style="color: var(--primary-blue); font-weight: bold;">98% Match</span>
                     <span style="color: #a3a3a3;">2024</span>
-                    <span
-                        style="border: 1px solid #a3a3a3; padding: 1px 6px; font-size: 11px; border-radius: 2px;">HD</span>
+                    <span style="border: 1px solid #a3a3a3; padding: 1px 6px; font-size: 11px; border-radius: 2px;">HD</span>
                     <span id="modalReviews" class="reviews-badge">⭐ 8.5 (1.2k Reviews)</span>
                 </div>
                 <p id="modalDesc" style="line-height: 1.4; font-size: 0.95rem; color: #fff; margin-bottom: 18px;">
                     Watch this amazing show on WatchWise. Experience the drama, action, and suspense.
                 </p>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                     <a id="watchLink" class="btn btn-play" style="text-decoration: none;" target="_blank">▶ Play</a>
                     <button id="addToListBtn" class="btn btn-more" onclick="toggleMyList()">+ My List</button>
                 </div>
@@ -622,13 +872,10 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
                         <span data-val="4">★</span>
                         <span data-val="5">★</span>
                     </div>
-                    <textarea id="userReviewText" class="review-input"
-                        placeholder="What did you think about this?"></textarea>
-                    <button class="btn btn-play" onclick="submitReview()"
-                        style="padding: 8px 16px; font-size: 0.9rem; border-radius: 4px;">Post Review</button>
+                    <textarea id="userReviewText" class="review-input" placeholder="What did you think about this?"></textarea>
+                    <button class="btn btn-play" onclick="submitReview()" style="padding: 8px 16px; font-size: 0.9rem; border-radius: 4px;">Post Review</button>
 
-                    <div class="user-reviews-list" id="displayReviews">
-                    </div>
+                    <div class="user-reviews-list" id="displayReviews"></div>
                 </div>
             </div>
         </div>
@@ -640,17 +887,15 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
         const dramasList = <?php echo json_encode($dramasList, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
         const cartoonsList = <?php echo json_encode($cartoonsList, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 
-
-        // ================= GLOBAL STATE =================
         let currentModalMovie = null;
         let selectedRating = 0;
         let mySavedList = JSON.parse(localStorage.getItem('watchWiseList')) || [];
         let userReviews = JSON.parse(localStorage.getItem('watchWiseReviews')) || {};
 
-        // ================= RENDER FUNCTIONS =================
         function createItems(containerId, list) {
             const container = document.getElementById(containerId);
             container.innerHTML = "";
+
             list.forEach(item => {
                 const div = document.createElement("div");
                 div.className = "movie-card";
@@ -663,8 +908,7 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
                 img.src = item.img;
                 img.loading = "lazy";
                 img.onerror = function() {
-                    this.src =
-                        `https://via.placeholder.com/180x270/222/fff?text=${encodeURIComponent(item.title)}`;
+                    this.src = `https://via.placeholder.com/180x270/222/fff?text=${encodeURIComponent(item.title)}`;
                 };
 
                 div.appendChild(img);
@@ -683,16 +927,20 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             }
         }
 
-        // Initialize Rows
         createItems("movies", moviesList);
         createItems("dramas", dramasList);
         createItems("cartoons", cartoonsList);
         renderMyList();
 
-        // ================= HERO LOGIC =================
         let heroIndex = 0;
 
         function updateHero() {
+            if (!heroImgs || heroImgs.length === 0) {
+                document.getElementById("heroTitle").innerText = "Welcome to WatchWise";
+                document.getElementById("heroDesc").innerText = "Enjoy movies, dramas and anime with your current subscription.";
+                return;
+            }
+
             const hero = document.getElementById("hero");
             const current = heroImgs[heroIndex];
             hero.style.backgroundImage = `url('${current.img}')`;
@@ -700,17 +948,18 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             document.getElementById("heroDesc").innerText = current.desc;
             heroIndex = (heroIndex + 1) % heroImgs.length;
         }
-        updateHero();
-        setInterval(updateHero, 6000);
 
-        // ================= NAVBAR SCROLL =================
+        updateHero();
+        if (heroImgs && heroImgs.length > 1) {
+            setInterval(updateHero, 6000);
+        }
+
         window.addEventListener("scroll", () => {
             const nav = document.getElementById("navbar");
             if (window.scrollY > 50) nav.classList.add("black-nav");
             else nav.classList.remove("black-nav");
         });
 
-        // ================= ROW SCROLL BUTTONS =================
         function scrollRow(rowId, amount) {
             const row = document.getElementById(rowId);
             row.scrollBy({
@@ -719,7 +968,6 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             });
         }
 
-        // ================= MODAL LOGIC =================
         function openModal(movie) {
             currentModalMovie = movie;
             const modal = document.getElementById("movieModal");
@@ -733,15 +981,13 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
 
             document.getElementById("modalImg").src = movie.img;
             document.getElementById("modalTitle").innerText = movie.title;
-            document.getElementById("watchLink").href =
-                `https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title)}+trailer`;
+            document.getElementById("modalDesc").innerText = movie.desc || "Watch this amazing show on WatchWise.";
+            document.getElementById("watchLink").href = `https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title)}+trailer`;
 
-            // Reset Rating inputs
             selectedRating = 0;
             updateStarUI();
             document.getElementById("userReviewText").value = "";
 
-            // Load existing reviews
             loadReviewsForMovie(movie.title);
         }
 
@@ -755,14 +1001,12 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             if (e.target == document.getElementById("movieModal")) closeModal();
         };
 
-        // ================= MY LIST LOGIC =================
         function toggleMyList() {
             if (!currentModalMovie) return;
 
             const index = mySavedList.findIndex(m => m.title === currentModalMovie.title);
             const btn = document.getElementById("addToListBtn");
 
-            // UI & LocalStorage Update
             if (index > -1) {
                 mySavedList.splice(index, 1);
                 btn.innerText = "+ My List";
@@ -774,14 +1018,12 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             localStorage.setItem('watchWiseList', JSON.stringify(mySavedList));
             renderMyList();
 
-            // Database Update (PHP Call)
             fetch("save_mylist.php", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/x-www-form-urlencoded"
                     },
-                    body: "title=" + encodeURIComponent(currentModalMovie.title) + "&image=" + encodeURIComponent(
-                        currentModalMovie.img)
+                    body: "title=" + encodeURIComponent(currentModalMovie.title) + "&image=" + encodeURIComponent(currentModalMovie.img)
                 })
                 .then(res => res.text())
                 .then(data => {
@@ -790,9 +1032,9 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
                 .catch(err => console.error("Error saving to MyList:", err));
         }
 
-        // ================= SMART SEARCH =================
         function searchMovie(val) {
             val = val.toLowerCase();
+
             document.querySelectorAll(".movie-card").forEach(card => {
                 const title = card.getAttribute("data-title");
                 const tags = card.getAttribute("data-tags");
@@ -804,7 +1046,6 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
                 }
             });
 
-            // Search Keyword Database Call
             if (val.trim() !== "") {
                 fetch("save_search.php", {
                     method: "POST",
@@ -816,7 +1057,6 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             }
         }
 
-        // ================= RATING & REVIEW SYSTEM =================
         const stars = document.querySelectorAll("#starContainer span");
 
         stars.forEach(star => {
@@ -874,17 +1114,14 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
                 date: new Date().toLocaleDateString()
             };
 
-            // Save to DB
             saveReviewToDatabase(newReview);
 
-            // Save to LocalStorage
             if (!userReviews[movieTitle]) {
                 userReviews[movieTitle] = [];
             }
             userReviews[movieTitle].unshift(newReview);
             localStorage.setItem('watchWiseReviews', JSON.stringify(userReviews));
 
-            // Update UI
             selectedRating = 0;
             updateStarUI();
             document.getElementById("userReviewText").value = "";
@@ -898,8 +1135,7 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
             const movieReviews = userReviews[title] || [];
 
             if (movieReviews.length === 0) {
-                reviewsContainer.innerHTML =
-                    "<p style='color: #888; font-size: 0.9rem;'>No reviews yet. Be the first to review!</p>";
+                reviewsContainer.innerHTML = "<p style='color: #888; font-size: 0.9rem;'>No reviews yet. Be the first to review!</p>";
                 return;
             }
 
@@ -908,12 +1144,25 @@ $cartoonsList = getMoviesByCategory($conn, 'cartoons');
                 const reviewEl = document.createElement("div");
                 reviewEl.className = "user-review-card";
                 reviewEl.innerHTML = `
-                <div class="stars">${starString} <span style="color:#888; font-size:12px; margin-left:10px;">${review.date}</span></div>
-                <div class="text">${review.text}</div>
-            `;
+                    <div class="stars">${starString} <span style="color:#888; font-size:12px; margin-left:10px;">${review.date}</span></div>
+                    <div class="text">${review.text}</div>
+                `;
                 reviewsContainer.appendChild(reviewEl);
             });
         }
+
+        function toggleProfile() {
+            document.getElementById("profileMenu").classList.toggle("show");
+        }
+
+        document.addEventListener("click", function(e) {
+            const wrap = document.querySelector(".profile-wrap");
+            const menu = document.getElementById("profileMenu");
+
+            if (wrap && !wrap.contains(e.target)) {
+                menu.classList.remove("show");
+            }
+        });
     </script>
 
 </body>
