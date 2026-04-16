@@ -178,15 +178,15 @@ $footer_about = $settings['footer_about'] ?? 'Watchwise is your modern movie dis
         }
 
         /* Hero */
-  .hero {
-    height: 100vh;
-    background:
-        linear-gradient(90deg, rgba(11, 15, 25, 0.95) 25%, rgba(11, 15, 25, 0.5) 100%),
-        url("<?php echo htmlspecialchars($hero_image); ?>") center/cover no-repeat;
-    display: flex;
-    align-items: center;
-    padding: 0 5%;
-}
+        .hero {
+            height: 100vh;
+            background:
+                linear-gradient(90deg, rgba(11, 15, 25, 0.95) 25%, rgba(11, 15, 25, 0.5) 100%),
+                url("<?php echo htmlspecialchars($hero_image); ?>") center/cover no-repeat;
+            display: flex;
+            align-items: center;
+            padding: 0 5%;
+        }
 
         .hero-content {
             max-width: 650px;
@@ -518,6 +518,7 @@ $footer_about = $settings['footer_about'] ?? 'Watchwise is your modern movie dis
                     font-size: 2.5rem;
                 }
             }
+        }
     </style>
 </head>
 
